@@ -1,0 +1,2433 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>기안문 초안 자동 작성 프로그램(HUFS First-Draft)</title>
+<style>
+  :root{
+    --navy:#002D56; --gold:#8D7150; --bg:#F4F6F9; --card:#fff; --line:#D9DEE5; --text:#1d2430; --muted:#5d6878;
+    --ok:#1e7d4f; --okbg:#e6f4ec; --warn:#a46a00; --warnbg:#fff4dc; --err:#b3261e; --errbg:#fdeceb; --info:#2a5d8f; --infobg:#e8f0f8;
+    /* 미리보기(기안문) 글꼴 — 도구 막대에서 바꿈 */
+    --ff:"GulimChe","굴림체",monospace; --fs:12pt; --fs-title:13pt; --fs-org:18pt; --lh:1.7;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:"Malgun Gothic","맑은 고딕",system-ui,sans-serif;font-size:14px;line-height:1.55}
+  header{background:#fff;border-bottom:3px solid var(--navy);padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header h1{margin:0;font-size:20px;color:var(--navy);cursor:pointer}
+  header .sub{color:var(--muted);font-size:13px}
+  header .link{margin-left:auto;font-size:13px;color:var(--gold);font-weight:bold;text-decoration:none;border:1px solid var(--gold);border-radius:6px;padding:5px 10px}
+  header .link:hover{background:#f7f2ea}
+  main{display:grid;grid-template-columns:minmax(380px,520px) 1fr;gap:18px;padding:18px;max-width:1600px;margin:0 auto}
+  @media (max-width:1100px){ main{grid-template-columns:1fr} .right{position:static !important} }
+  section.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:14px}
+  section.card h2{margin:0 0 10px;font-size:16px;color:var(--navy);display:flex;align-items:center;gap:8px}
+  section.card h2 .no{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:12.5px;align-items:center;justify-content:center}
+  label.f{display:block;font-size:13px;color:var(--muted);margin:8px 0 3px;font-weight:bold}
+  input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:5px;padding:5px 7px;width:100%;background:#fff;color:var(--text)}
+  input:focus,select:focus,textarea:focus{outline:2px solid #9db8d6;border-color:#9db8d6}
+  textarea{resize:vertical;line-height:1.55}
+  #desc{min-height:170px}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+  .g4{display:grid;grid-template-columns:1.3fr 1.3fr 1fr 1fr;gap:0 8px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+  button{font:inherit;font-size:13.5px;border:1px solid var(--navy);background:#fff;color:var(--navy);padding:6px 12px;border-radius:6px;cursor:pointer;white-space:nowrap}
+  button.primary{background:var(--navy);color:#fff}
+  button.gold{border-color:var(--gold);color:var(--gold)}
+  button.small{padding:2px 8px;font-size:12.5px}
+  button.x{border:none;color:#a33;background:none;padding:2px 6px;font-size:15px}
+  button:hover{opacity:.86}
+  .note{font-size:12.5px;color:var(--muted);margin-top:4px}
+  .drop{margin-top:8px;border:2px dashed #b9c3d0;border-radius:8px;padding:10px 12px;font-size:13px;color:var(--muted);text-align:center;background:#fafbfd;cursor:pointer}
+  .drop b{color:#1f4e8c}
+  .drop.on,section.card.dragon .drop{border-color:#1f4e8c;background:#eaf1fb;color:#1f4e8c}
+  .drop.busy{opacity:.6;pointer-events:none}
+  table.in{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+  table.in th{background:#eef2f7;color:var(--navy);font-weight:bold;padding:4px;border:1px solid var(--line);white-space:nowrap;font-size:12.5px}
+  table.in td{border:1px solid var(--line);padding:2px}
+  table.in td input{border:none;padding:4px;font-size:13px;border-radius:0}
+  table.in td.amt{text-align:right;padding-right:6px;white-space:nowrap;background:#fafbfc}
+  .total{margin-top:6px;text-align:right;font-weight:bold;color:var(--navy)}
+  .checks{list-style:none;margin:0;padding:0}
+  .checks li{padding:6px 8px;border-radius:5px;margin-bottom:5px;font-size:13px;display:flex;gap:8px}
+  .checks li b{white-space:nowrap}
+  .checks .ok{background:var(--okbg);color:var(--ok)} .checks .warn{background:var(--warnbg);color:var(--warn)}
+  .checks .err{background:var(--errbg);color:var(--err)} .checks .info{background:var(--infobg);color:var(--info)}
+  .checks .basis{color:var(--muted);font-size:12px}
+  .need{margin-top:8px;border:1px solid #e3d9c8;background:#fbf8f3;border-radius:6px;padding:6px 10px}
+  .need h3{margin:0 0 5px;font-size:13px;color:var(--gold);display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+  .need h3 span{font-weight:normal;color:var(--muted);font-size:12px}
+  .need h3 .hint{margin-left:auto;font-size:11.5px}
+  .need ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px 5px}
+  .need li{border:1px solid #e3d9c8;border-radius:12px;padding:1px 9px;background:#fff;font-size:12.5px;cursor:help}
+  .need li b{color:var(--muted);font-weight:bold}
+  .need li.ok{background:var(--okbg);border-color:#a8d5bd}
+  .need li.ok b{color:var(--ok)}
+  .need li.ok b::before{content:'✓ '}
+  section.card.fold>h2{cursor:pointer;user-select:none;margin-bottom:0}
+  section.card.fold.open>h2{margin-bottom:10px}
+  section.card.fold:not(.open)>*:not(h2){display:none}
+  section.card.fold:not(.open){padding-top:11px;padding-bottom:11px}
+  section.card.fold>h2:hover{color:#00478a}
+  h2 .fsum{font-weight:normal;font-size:12.5px;color:var(--muted);margin-left:4px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  h2 .farrow{font-size:12px;font-weight:bold;color:var(--navy);border:1px solid var(--line);border-radius:10px;padding:1px 9px;white-space:nowrap;background:#f4f6f9}
+  details.opt{margin-top:10px;border:1px solid var(--line);border-radius:6px;padding:6px 10px;background:#fafbfc}
+  details.opt>summary{cursor:pointer;font-weight:bold;color:var(--navy);font-size:13.5px}
+  details.opt>summary .sum{font-weight:normal;color:var(--muted);font-size:12.5px}
+  details.opt[open]>summary{margin-bottom:4px}
+  label.chk{display:flex;gap:6px;align-items:center;font-size:13px;margin-top:6px}
+  #chkBadge{font-weight:800;font-size:13.5px;padding:4px 12px;border-width:2px;border-radius:14px;color:#fff;letter-spacing:.01em}
+  #chkBadge::before{content:'✔ ';}
+  #chkBadge.err{border-color:var(--err);background:var(--err);animation:chkPulse 1.6s ease-in-out infinite}
+  #chkBadge.err::before,#chkBadge.warn::before{content:'! ';}
+  #chkBadge.warn{border-color:#c98400;background:#d98e00}
+  #chkBadge.info{border-color:var(--info);background:var(--info)}
+  #chkBadge.ok{border-color:var(--ok);background:var(--ok)}
+  @keyframes chkPulse{0%,100%{box-shadow:0 0 0 0 rgba(179,38,30,.45)}50%{box-shadow:0 0 0 5px rgba(179,38,30,0)}}
+  .tbltools{display:flex;gap:4px;align-items:center;font-size:13px;margin-left:8px;padding-left:8px;border-left:1px solid var(--line)}
+  .tbltools button{padding:2px 7px;font-size:12.5px}
+  .tbltools button:disabled{opacity:.35;cursor:default}
+  .page td.cellsel,.page th.cellsel{outline:2px solid #2a7de1;outline-offset:-2px;background:#eaf3ff !important}
+  #chkCard.flash{box-shadow:0 0 0 3px #e0a030}
+  .pii{display:none;margin-top:8px;padding:8px 10px;border-radius:6px;background:var(--warnbg);color:var(--warn);font-size:13px}
+  .pii.on{display:block}
+
+  /* 오른쪽: 도구 막대 + 미리보기 */
+  .right{position:sticky;top:10px;align-self:start;max-height:calc(100vh - 20px);display:flex;flex-direction:column}
+  .toolbar{background:#fff;border:1px solid var(--line);border-radius:8px 8px 0 0;padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:13px}
+  .toolbar .grp{display:flex;align-items:center;gap:4px}
+  .toolbar .grp>span{color:var(--muted);font-weight:bold;margin-right:2px}
+  .toolbar select{width:auto;padding:3px 5px;font-size:13px}
+  .toolbar button{padding:3px 8px;font-size:13px}
+  .toolbar .sep{width:1px;height:22px;background:var(--line)}
+  .toolbar2{background:#f7f9fb;border:1px solid var(--line);border-top:none;padding:7px 10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .toolbar2 .sp{flex:1}
+  .dirty{display:none;background:var(--warnbg);color:var(--warn);border:1px solid #ecd39a;border-top:none;padding:6px 10px;font-size:13px;align-items:center;gap:8px}
+  .dirty.on{display:flex}
+  .stage{background:#dfe4ea;border:1px solid var(--line);border-top:none;border-radius:0 0 8px 8px;padding:16px;overflow:auto;flex:1}
+  .page{width:210mm;min-height:297mm;margin:0 auto;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18);padding:20mm 20mm 18mm;
+        font-family:var(--ff);font-size:var(--fs);line-height:var(--lh);color:#000;outline:none;display:flex;flex-direction:column}
+  .page:focus-within{box-shadow:0 0 0 2px #9db8d6,0 2px 10px rgba(0,0,0,.18)}
+  .page .org{text-align:center;font-size:var(--fs-org);font-weight:bold;letter-spacing:.05em;margin-bottom:14pt}
+  .page .hd{border-top:2px solid #000;padding-top:6pt}
+  .page .hd p{margin:0;padding-left:4em;text-indent:-4em}
+  .page .hd .tt{font-size:var(--fs-title);font-weight:bold;margin-top:4pt;padding-bottom:6pt;border-bottom:1px solid #000}
+  .page .hd .lb{display:inline-block;min-width:4em;text-indent:0;font-weight:bold}
+  .page .bd{margin-top:10pt;flex:1}
+  .page p.b{margin:0;white-space:pre-wrap;word-break:keep-all}
+  .page table.bt{border-collapse:collapse;margin:3pt 0 5pt;font-size:10pt}
+  .page table.bt th,.page table.bt td{border:1px solid #000;padding:2pt 5pt;line-height:1.4}
+  .page table.bt th{background:#eeeeee;font-weight:bold;text-align:center}
+  .page table.bt td.n{text-align:right;white-space:nowrap}
+  .page table.bt td{text-align:center}
+  .page table.bt td.c{text-align:center}
+  .page table.bt tr.sum td{font-weight:bold;background:#f6f6f6}
+  .page table.bt.sm{font-size:9pt}
+  .page table.bt.sm th,.page table.bt.sm td{padding:2pt 3pt}
+  .page .sender{text-align:center;font-weight:bold;font-size:1.45em;letter-spacing:.08em;margin-top:22pt}
+  .page .ap{margin-top:18pt;border-top:2px solid #000;border-bottom:2px solid #000;font-size:.88em;line-height:1.5;padding:4pt 0}
+  .page .ap p{margin:2pt 0;white-space:pre-wrap}
+  .page .ap .lb{display:inline-block;min-width:4em;font-weight:bold}
+  .page.no-ap .ap{display:none}
+  #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1d2430;color:#fff;padding:9px 18px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:9}
+  #toast.on{opacity:.94}
+
+  @page{size:A4;margin:0}
+  @media print{
+    body{background:#fff}
+    header,.left,.toolbar,.toolbar2,.dirty,#toast{display:none !important}
+    main{display:block;padding:0}
+    .right{position:static;max-height:none}
+    .stage{border:none;background:#fff;padding:0;overflow:visible}
+    .page{box-shadow:none !important;zoom:1 !important;margin:0}
+    .page .cellsel{outline:none !important;background:inherit !important}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="home" title="처음 화면으로">기안문 초안 자동 작성 프로그램(HUFS First-Draft)</h1>
+  <span class="sub">업무 내용을 적으면 공문서 작성 표본(인사-1782(2025.9.23.))에 맞춘 기안문 초안을 만듭니다 · 입력 내용은 외부로 전송하지 않습니다</span>
+  <a class="link" href="../기안문 사전점검/index.html" target="_blank">기안문 사전점검 열기 →</a>
+</header>
+
+<main>
+<div class="left">
+
+  <section class="card" id="card1">
+    <h2><span class="no">1</span>업무 내용 서술하기</h2>
+    <textarea id="desc" placeholder="예) 2026년 11월 23일(월) 오후 2시부터 5시까지 서울캠퍼스 ○○관 세미나실에서 ○○ 성과공유회를 개최하려고 합니다. 단원 등 30명을 대상으로 … 예산은 다과 10,000원×30명, 현수막 제작 150,000원입니다. 붙임: 운영 계획(안)"></textarea>
+    <div class="row">
+      <button class="primary" id="btnParse">서술에서 항목 채우기</button>
+      <select id="sampleSel" style="width:auto">
+        <option value="">예시 고르기…</option>
+        <option value="SAMPLE">행사 운영</option><option value="SAMPLE2">결과보고</option><option value="SAMPLE3">협조문</option>
+        <option value="SAMPLE4">안내·알림</option><option value="SAMPLE5">외부기관 발송</option><option value="SAMPLE6">지원사업 시행</option><option value="SAMPLE7">정책연구 시행</option>
+      </select>
+      <button id="btnClear" class="small" style="margin-left:auto">모두 비우기</button>
+    </div>
+    <div class="drop" id="drop" title="hwpx·pdf·txt 파일을 읽어 위 서술 칸에 넣고 항목을 채웁니다">📄 보고자료(<b>hwpx·pdf</b>)를 여기로 끌어 놓거나 <b>눌러서 파일 고르기</b> — 파일 내용은 이 PC 안에서만 읽습니다</div>
+    <input type="file" id="fileIn" accept=".hwpx,.pdf,.txt,.hwp" hidden>
+    <div class="note">일시·장소·대상·인원·예산(단가×수량)·붙임을 찾아 아래 칸을 채웁니다. 채운 뒤 아래 칸에서 바로 고치면 오른쪽 기안문이 함께 바뀝니다.</div>
+    <div class="need">
+      <h3>서술에 꼭 넣을 내용 <span id="needCnt"></span><span class="hint">초록 = 채워짐 · 칩에 마우스를 올리면 예시</span></h3>
+      <ul id="need">
+        <li data-k="purpose" title="왜 하는지 — &quot;○○을 위해&quot;"><b>목적</b></li>
+        <li data-k="content" title="무엇을 하는지 — 진행 순서·구매 품목('-'로 줄 나눔)"><b>내용</b></li>
+        <li data-k="when" title="&quot;2026년 11월 23일 오후 2시~5시&quot;"><b>일시</b></li>
+        <li data-k="place" title="&quot;○○관 세미나실에서&quot;"><b>장소</b></li>
+        <li data-k="who" title="누구를 — &quot;○○ 단원을 대상으로&quot;"><b>대상</b></li>
+        <li data-k="cnt" title="몇 명 — &quot;30명&quot;"><b>인원</b></li>
+        <li data-k="acct" title="&quot;예산항목: [혁신]○○ 운영&quot;"><b>예산항목</b></li>
+        <li data-k="basis" title="&quot;소요예산: 1,000,000원&quot; 또는 &quot;다과 10,000원×30명&quot;"><b>예산</b></li>
+      </ul>
+    </div>
+    <div class="pii" id="pii"></div>
+  </section>
+
+  <section class="card" id="chkCard">
+    <h2><span class="no">✔</span>작성 점검</h2>
+    <ul class="checks" id="checks"></ul>
+    <div class="note">근거: 「2026 대학혁신지원사업 사업비 집행지침」, 학교 「구매규정」, 공문서 표본(인사-1782). 최종 판단은 담당 부서 기준을 따르세요.</div>
+  </section>
+
+  <section class="card fold" id="fold2">
+    <h2 title="눌러서 펼치기/접기"><span class="no">2</span>문서 기본<span class="fsum" id="sum2"></span><span class="farrow">펼치기 ▾</span></h2>
+    <div class="g2">
+      <div><label class="f" for="type">문서 종류</label>
+        <select id="type">
+          <optgroup label="우리 부서 시행">
+            <option value="event">행사·프로그램 운영</option>
+            <option value="meeting">회의·위원회·간담회</option>
+            <option value="purchase">물품 구매</option>
+            <option value="service">용역 계약</option>
+            <option value="works">시설 공사</option>
+            <option value="pay">지급(장학금·수당·지원금)</option>
+            <option value="support">지원사업 시행(공모·선정)</option>
+            <option value="research">정책연구 시행</option>
+            <option value="general">일반 시행·보고(회신·제출 포함)</option>
+          </optgroup>
+          <optgroup label="보고">
+            <option value="report">결과보고</option>
+          </optgroup>
+          <optgroup label="다른 부서·기관 앞">
+            <option value="coop">협조문(협조 요청)</option>
+            <option value="notice">안내·알림·공유</option>
+            <option value="external">일반기안(외부기관 발송)</option>
+          </optgroup>
+        </select></div>
+      <div id="fVerb"><label class="f" for="verb">본문 첫 문장 동사</label>
+        <select id="verb"></select></div>
+    </div>
+    <label class="f" for="recv">수신</label><input type="text" id="recv" value="내부결재" list="recvList">
+    <div class="note">여러 부서에 보낼 때는 쉼표로 나눠 적으세요(예: 교무행정팀장, 인사팀장). 수신은 '수신자참조'가 되고 아래에 수신자 목록이 붙습니다.</div>
+    <datalist id="recvList"><option value="내부결재"><option value="교무처장(교무행정팀장)"><option value="기획조정처장(예산조정팀장)"><option value="교육혁신원장(혁신지원팀장)"><option value="혁신지원팀장"></datalist>
+    <label class="f" for="title">제목 <span style="font-weight:normal">(비워 두면 자동)</span></label><input type="text" id="title">
+    <label class="f">관련 문서 <span style="font-weight:normal">(있으면 1항에 '관련:'으로 들어감)</span></label>
+    <table class="in" id="relT"><thead><tr><th style="width:30%">문서번호</th><th style="width:24%">생산일</th><th>제목</th><th></th></tr></thead><tbody></tbody></table>
+    <div class="row" style="margin-top:6px"><button class="small" id="addRel">+ 관련 문서 추가</button></div>
+    <details class="opt" id="fmtBox">
+      <summary>서식 옵션 <span class="sum" id="fmtSum"></span></summary>
+      <div class="g2">
+        <div><label class="f" for="prefix">제목 머리말</label>
+          <select id="prefix"><option value="">없음</option><option selected>[대학혁신지원사업]</option><option>[혁신]</option><option>[한국외국어대학교]</option></select></div>
+        <div><label class="f" for="style">끝맺음 문체</label>
+          <select id="style"><option value="plain">간결형 (…하고자 합니다.)</option><option value="polite">결재 요청형 (…하오니 결재하여 주시기 바랍니다.)</option></select></div>
+        <div style="grid-column:1/-1"><label class="f" for="layout">항목 번호 방식</label>
+          <select id="layout"><option value="auto">자동 (한 문장이면 번호 없이, 관련·배경이 있으면 1. 2.)</option><option value="nested">항상 1. 첫 문장 → 가. 나. 다.</option><option value="flat">항상 첫 문장(번호 없음) → 1. 2. 3.</option></select></div>
+        <div><label class="f" for="dept">기안 부서(처리과)</label><input type="text" id="dept" placeholder="예) 교육혁신팀"></div>
+        <div><label class="f" for="campus">캠퍼스(발신 주소)</label>
+          <select id="campus"><option value="seoul">서울캠퍼스</option><option value="global">글로벌캠퍼스</option></select></div>
+      </div>
+      <label id="wGreet" class="chk"><input type="checkbox" id="greet"> 1항에 인사말 넣기 ("<span id="greetTxt">귀 부서의 협조에 감사드립니다.</span>")</label>
+      <label class="chk"><input type="checkbox" id="ext"> 외부 기관으로 보내는 시행문 (인사말 '귀 기관의…', 발신명의 '한국외국어대학교 총장')</label>
+      <label class="chk" id="wBudTitle"><input type="checkbox" id="budTitle"> 자동 제목 끝에 '및 소요예산 집행' 붙이기</label>
+    </details>
+  </section>
+
+  <section class="card fold" id="fold3">
+    <h2 title="눌러서 펼치기/접기"><span class="no">3</span>세부 내용<span class="fsum" id="sum3"></span><span class="farrow">펼치기 ▾</span></h2>
+    <label class="f" for="name" id="lbName">사업명</label><input type="text" id="name">
+    <div id="fPurpose"><label class="f" for="purpose" id="lbPurpose">목적</label><input type="text" id="purpose"></div>
+    <div id="fBg"><label class="f" for="bg">배경 설명 <span style="font-weight:normal">(선택 — 적으면 '1. 배경 … 2. 이에 …하고자 합니다.' 형식)</span></label>
+      <textarea id="bg" rows="2" placeholder="예) 교육혁신원은 매 학기 학생교육혁신단을 구성하여 운영하고 있습니다."></textarea></div>
+    <div id="fWhen"><label class="f" id="lbWhen">일시</label>
+    <div class="g4">
+      <input type="date" id="d1" title="시작일"><input type="date" id="d2" title="종료일(하루면 비움)">
+      <input type="time" id="t1" title="시작 시각"><input type="time" id="t2" title="종료 시각">
+    </div>
+    <div class="note">시작일 · 종료일(하루면 비움) · 시작 시각 · 종료 시각</div></div>
+    <div class="g2">
+      <div id="fPlace"><label class="f" for="place" id="lbWhere">장소</label><input type="text" id="place"></div>
+      <div id="wWho"><label class="f" for="who" id="lbWho">대상</label>
+        <div style="display:flex;gap:6px"><input type="text" id="who"><input type="number" id="cnt" min="0" placeholder="인원" style="width:80px" title="인원(명)"></div></div>
+      <div id="wMethod" style="grid-column:1/-1"><label class="f" for="method" id="lbMethod">계약 방법</label><input type="text" id="method" placeholder="예) 2인 이상 견적에 의한 수의계약"></div>
+      <div id="wContract" style="grid-column:1/-1;display:none"><div class="g2">
+        <div><label class="f" for="paycond">대금 지급 조건</label><select id="paycond"><option value="">표시 안 함</option><option value="once">현금 일시 지급(완료 후)</option><option value="split2">현금 2회 분할(기성금 50%·잔금 50%)</option></select></div>
+        <div><label class="f" for="warranty">하자보수보증(공사)</label><select id="warranty"><option value="">표시 안 함</option><option>계약금액의 3%, 준공일로부터 2년</option><option>계약금액의 5%, 준공일로부터 3년</option></select></div>
+      </div></div>
+    </div>
+    <div id="fContent"><label class="f" for="content" id="lbContent">주요 내용</label>
+    <textarea id="content" rows="4" placeholder="한 줄에 하나씩 적으세요. '-'로 시작하면 한 단계 아래 항목이 됩니다."></textarea></div>
+    <div id="wQuote">
+      <label class="f" for="quotes">비교견적 <span style="font-weight:normal">('업체명 / 금액' 한 줄에 하나, 가장 싼 곳이 자동 선정)</span></label>
+      <textarea id="quotes" rows="3" placeholder="○○상사 / 3,656,400&#10;△△디자인 / 3,806,000&#10;□□퍼니처 / 4,010,600"></textarea>
+    </div>
+    <div id="wTeam">
+      <label class="f" for="team">연구참여진 <span style="font-weight:normal">('역할: 이름 직위(소속)' 한 줄에 하나, 여러 명은 쉼표)</span></label>
+      <textarea id="team" rows="3" placeholder="연구책임자: ○○○ 교수(○○학부)&#10;공동연구원: ○○○ 연구교수, ○○○ 연구원&#10;연구보조원: ○○○ 연구원"></textarea>
+    </div>
+    <details class="opt auto" id="wSteps">
+      <summary>추진 일정 <span class="sum">('단계 / 일정' 한 줄에 하나, 표로 들어감)</span></summary>
+      <textarea id="steps" rows="3" placeholder="기획 및 목차 구성 / 2026. 4. 6.~4. 10.&#10;디자인 구성 / 2026. 4. 21.~4. 30.&#10;배포 / 2026. 5. 11."></textarea>
+    </details>
+    <div id="wSupport">
+      <label class="f" for="crit">심사 기준 <span style="font-weight:normal">('기준: 배점 / 설명' 한 줄에 하나)</span></label>
+      <textarea id="crit" rows="3" placeholder="사업 목적과의 정합성: 35 / 교과목 내용이 사업 목적에 맞는지&#10;집행 계획의 적절성: 35&#10;기대성과의 우수성: 30"></textarea>
+    </div>
+    <div id="wNotice">
+      <label class="f" for="ask">협조 사항 <span style="font-weight:normal">(받는 부서가 할 일, 한 줄에 하나)</span></label>
+      <textarea id="ask" rows="3" placeholder="예) 소속 구성원에게 안내 전파"></textarea>
+    </div>
+    <div id="wReport">
+      <label class="f" for="sat">만족도 조사 결과</label><input type="text" id="sat" placeholder="예) 4.78/5점(응답 23명)">
+      <label class="f" for="outcome">성과 및 향후 개선 사항 <span style="font-weight:normal">(한 줄에 하나)</span></label>
+      <textarea id="outcome" rows="3" placeholder="예) 응답자 전원이 '만족' 이상으로 응답함"></textarea>
+    </div>
+    <div id="wSched">
+      <label class="f" for="sched">행사 일정 <span style="font-weight:normal">('11:00~11:10 인사말 / 교육혁신원장' 한 줄에 하나, '/' 뒤는 비고)</span></label>
+      <textarea id="sched" rows="3" placeholder="10:30~11:00 입장&#10;11:00~11:10 인사말 / 교육혁신원장&#10;11:10~11:40 활동 안내 / 혁신지원팀"></textarea>
+    </div>
+    <details class="opt auto" id="fExtra">
+      <summary>추가 항목 <span class="sum">('항목명: 내용' 한 줄에 하나 — 주관·문의 등)</span></summary>
+      <textarea id="extra" rows="2" placeholder="예) 주관: 교육혁신원&#10;문의: ○○팀(내선 ○○○○)"></textarea>
+    </details>
+  </section>
+
+  <section class="card fold" id="fold4">
+    <h2 title="눌러서 펼치기/접기"><span class="no">4</span>소요예산<span class="fsum" id="sum4"></span><span class="farrow">펼치기 ▾</span></h2>
+    <label class="f">예산항목 <span style="font-weight:normal">(예산이 있으면 기안문 '소요예산' 바로 아래에 표로 들어감)</span></label>
+    <table class="in" id="acctT"><thead><tr><th>사업내용(사업코드)</th><th>계정목</th><th>현재 배정액</th><th>기청구액</th><th>본건 청구액</th><th></th></tr></thead><tbody></tbody></table>
+    <datalist id="acctItemList"><option value="기타학생경비"><option value="학생지원비"><option value="연구비"><option value="연구관리비"><option value="기계기구"><option value="실험실습비"><option value="집기비품"><option value="건축물관리비"><option value="일반용역비"><option value="기타운영비"><option value="교내장학금"></datalist>
+    <div class="row" style="margin-top:6px"><button class="small" id="addAcct">+ 예산항목 줄 추가</button>
+      <span class="note" style="margin:0">한 줄이면 본건 청구액을 비워도 소요예산 금액이 들어갑니다. 청구 전·후 잔액은 자동 계산.</span></div>
+    <details class="opt auto" id="bizBox">
+      <summary>사업비 구성 해당 항목 <span class="sum">(영역·혁신전략·핵심과제·실행과제·비목)</span></summary>
+      <div class="g2">
+        <div><label class="f" for="bzArea">영역</label><input type="text" id="bzArea" list="bzAreaL" placeholder="교육"></div>
+        <div><label class="f" for="bzBimok">비목</label><input type="text" id="bzBimok" list="bzBimokL"></div>
+      </div>
+      <label class="f" for="bzStrat">혁신전략</label><input type="text" id="bzStrat" list="bzStratL">
+      <label class="f" for="bzTask">핵심과제</label><input type="text" id="bzTask" list="bzTaskL">
+      <label class="f" for="bzSub">실행과제</label><input type="text" id="bzSub" list="bzSubL">
+      <div class="note">목록은 실제 기안문에 나온 값입니다. 다른 값은 직접 적으세요.</div>
+      <datalist id="bzAreaL"><option value="교육"></datalist>
+      <datalist id="bzStratL"><option value="2. 학생 성공을 위한 맞춤형 지원체계 고도화"><option value="5. 지속 가능한 교육혁신을 위한 행·재정 지원체계 고도화"></datalist>
+      <datalist id="bzTaskL"><option value="4. 초개인화 학습지원 생태계 구축"><option value="5. 수요 기반 맞춤형 취·창업 지원"><option value="6. 다양성 기반 포용교육 실현"><option value="14. 데이터 기반 교육 관리 체계 고도화"><option value="디지털 기반 교육 운영 지원체계 고도화"></datalist>
+      <datalist id="bzSubL"><option value="4.2. 학습 격차 완화 지원체계 강화"><option value="5.1. 생애주기별 진로지도 체계 강화"><option value="5.2. 현장 수요 중심 취업역량 제고"><option value="5.3. 학생 창업 지원체계 고도화"><option value="6.3. 학생 마음건강 지원 강화"><option value="14.2. 데이터 기반 교육자원 관리 체계 고도화"><option value="에듀테크 기반 맞춤형 교육 인프라 확충"></datalist>
+      <datalist id="bzBimokL"><option value="(01)교육연구프로그램개발운영비"><option value="(04)교육연구환경개선비"></datalist>
+    </details>
+    <div class="g2">
+      <div><label class="f" for="pay">집행 방법</label><input type="text" id="pay" placeholder="예) 법인카드 사용 후 지출결의"></div>
+      <div><label class="f" for="vat">부가가치세</label>
+        <select id="vat"><option value="">표시 안 함</option><option>부가가치세 포함</option><option>부가가치세 별도</option></select></div>
+      <div><label class="f" for="tmode">산출 내용 표시</label>
+        <select id="tmode"><option value="table">표로</option><option value="line">줄글로(단가×수량=금액)</option></select></div>
+    </div>
+    <table class="in" id="budT"><thead><tr><th>구분</th><th>단가(원)</th><th>수량</th><th>단위</th><th>횟수</th><th>단위</th><th>금액(원)</th><th id="noteHead">비고</th><th></th></tr></thead><tbody></tbody></table>
+    <div class="row" style="margin-top:6px"><button class="small" id="addRow">+ 행 추가</button>
+      <span class="note" style="margin:0">단가를 비우고 금액만 적어도 됩니다.</span></div>
+    <div class="total" id="totalView"></div>
+    <label class="f" for="totalIn">총액 직접 입력 <span style="font-weight:normal">(표가 없을 때만, 표가 있으면 표 합계 사용)</span></label>
+    <input type="text" id="totalIn" placeholder="예) 1,500,000">
+  </section>
+
+  <section class="card fold" id="fold5">
+    <h2 title="눌러서 펼치기/접기"><span class="no">5</span>붙임·맺음<span class="fsum" id="sum5"></span><span class="farrow">펼치기 ▾</span></h2>
+    <label style="display:flex;gap:6px;align-items:center;font-size:13.5px"><input type="checkbox" id="closeOn"> 마지막 항목 추가</label>
+    <input type="text" id="closing" value="소요예산은 위와 같이 집행하고자 합니다." style="margin-top:4px">
+    <label class="f">붙임</label>
+    <table class="in" id="attT"><thead><tr><th>붙임 이름</th><th style="width:70px">부수</th><th></th></tr></thead><tbody></tbody></table>
+    <div class="row" style="margin-top:6px"><button class="small" id="addAtt">+ 붙임 추가</button></div>
+    <div class="row" id="attQuick" style="margin-top:6px;gap:5px"><span class="note" style="margin:0">자주 쓰는 붙임:</span>
+      <button class="small gold">관련 근거</button><button class="small gold">운영 계획(안)</button><button class="small gold">참여자 명단</button><button class="small gold">만족도 조사 결과</button>
+      <button class="small gold">결과보고서</button><button class="small gold">지출결의서 사본</button><button class="small gold">견적서</button><button class="small gold">준공사진</button></div>
+  </section>
+
+</div>
+
+<div class="right">
+  <div class="toolbar">
+    <div class="grp"><span>글꼴</span>
+      <select id="font">
+        <option value='"GulimChe","굴림체",monospace'>굴림체 (기본)</option>
+        <option value='"HCR Batang","함초롬바탕",serif'>함초롬바탕</option>
+        <option value='"Malgun Gothic","맑은 고딕",sans-serif'>맑은 고딕</option>
+        <option value='"HUFS L","한국외대체 L","한국외대체L",sans-serif'>한국외대체 L</option>
+      </select></div>
+    <div class="sep"></div>
+    <div class="grp"><span>본문</span><button data-step="fs:-1" title="본문 작게">−</button><select id="fs"></select><button data-step="fs:1" title="본문 크게">+</button></div>
+    <div class="grp"><span>제목</span><select id="fsTitle"></select></div>
+    <div class="grp"><span>기관명</span><select id="fsOrg"></select></div>
+    <div class="grp"><span>줄 간격</span><select id="lh"><option value="1.5">150%</option><option value="1.6">160%</option><option value="1.7" selected>170%</option><option value="1.8">180%</option><option value="2">200%</option></select></div>
+  </div>
+  <div class="toolbar2">
+    <div class="grp" style="display:flex;gap:4px;align-items:center;font-size:13px">
+      <b style="color:var(--muted)">선택한 글자</b>
+      <button class="small keep" id="selDown" title="선택한 글자 1pt 작게">가−</button>
+      <select id="selSize" class="keep" style="width:auto;padding:2px 4px;font-size:13px"></select>
+      <button class="small keep" id="selUp" title="선택한 글자 1pt 크게">가+</button>
+      <button class="small keep" id="selBold" title="굵게(Ctrl+B)"><b>가</b></button>
+    </div>
+    <div class="tbltools" id="tblTools" title="미리보기 표에서 칸을 누른 뒤 사용">
+      <b style="color:var(--muted)">표</b>
+      <button class="small keep" data-tb="mergeR" title="오른쪽 칸과 합치기">→ 합치기</button>
+      <button class="small keep" data-tb="mergeD" title="아래 칸과 합치기">↓ 합치기</button>
+      <button class="small keep" data-tb="split" title="합친 칸 나누기">나누기</button>
+      <button class="small keep" data-tb="rowAdd" title="아래에 행 추가">행+</button>
+      <button class="small keep" data-tb="rowDel" title="이 행 삭제">행−</button>
+      <button class="small keep" data-tb="colAdd" title="오른쪽에 열 추가">열+</button>
+      <button class="small keep" data-tb="colDel" title="이 열 삭제">열−</button>
+    </div>
+    <label style="font-size:13px;display:flex;gap:4px;align-items:center;margin-left:8px"><input type="checkbox" id="showAp" checked> 결재란·발신 정보</label>
+    <span class="sp"></span>
+    <button class="small" id="chkBadge" title="작성 점검으로 이동">점검</button>
+    <button class="small" id="cpRich" title="본문(첫 문장~붙임·끝.)만 서식째 복사 — 그룹웨어 기안 본문 칸에 붙여넣기. 기관명·수신·제목·결재란·주소는 빼고 복사">본문 복사</button>
+    <button class="small" id="cpAll" title="기관명·수신·제목·본문·결재란·주소까지 화면에 보이는 문서 전체를 서식째 복사 — 한글·워드에 붙여넣기">문서 서식 전체 복사</button>
+    <button class="small primary" id="print">인쇄·PDF</button>
+  </div>
+  <div class="dirty" id="dirty">미리보기를 직접 고쳤습니다. 왼쪽 입력을 바꿔도 덮어쓰지 않습니다.
+    <button class="small" id="rebuild" style="margin-left:auto">입력값으로 다시 만들기</button></div>
+  <div class="stage" id="stage">
+    <div class="page" id="page" contenteditable="true" spellcheck="false"></div>
+  </div>
+</div>
+</main>
+<div id="toast"></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+// 공문서 항목 기호: 가.~하. 다음은 거.~허., 그 뒤는 가가.처럼 겹쳐 씀(undefined 방지)
+const KO = new Proxy('가나다라마바사아자차카타파하거너더러머버서어저처커터퍼허'.split(''), {
+  get(a, k){ if (typeof k === 'string' && /^\d+$/.test(k) && +k >= a.length){ const i = +k; return a[Math.floor(i / a.length) - 1] + a[i % a.length]; } return a[k]; }
+});
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const num = s => { const v = parseFloat(String(s ?? '').replace(/[^\d.]/g, '')); return isFinite(v) ? v : 0; };
+const won = n => Math.round(n).toLocaleString('ko-KR');
+let toastT; const toast = m => { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2200); };
+
+/* ---------- 공문서 표기 도우미 ---------- */
+// 금1,100,000원(금일백일십만원)
+function hanAmt(n){
+  n = Math.round(n); if (!n) return '영';
+  const D = '영일이삼사오육칠팔구', S = ['', '십', '백', '천'], B = ['', '만', '억', '조'];
+  let out = '', g = 0;
+  while (n > 0){
+    const part = n % 10000; n = Math.floor(n / 10000);
+    if (part){
+      let s = ''; const ds = String(part).padStart(4, '0');
+      for (let i = 0; i < 4; i++){ const d = +ds[i]; if (d) s += D[d] + S[3 - i]; }
+      out = s + B[g] + out;
+    }
+    g++;
+  }
+  return out;
+}
+// 받침 있으면 a, 없으면 b
+function josa(word, a, b){
+  // 끝의 괄호 설명('업무협약식(MOU)')은 빼고 그 앞 말로 판단
+  const w = String(word || '').replace(/\s*\([^()]*\)\s*$/, '').replace(/[\s)」』"'”’\]]+$/, '');
+  const ch = w.slice(-1);
+  if (!ch) return a + '(' + b + ')';
+  const c = ch.charCodeAt(0);
+  if (c >= 0xAC00 && c <= 0xD7A3) return (c - 0xAC00) % 28 ? a : b;
+  if (/\d/.test(ch)) return '013678'.includes(ch) ? a : b;
+  if (/[a-z]/i.test(ch)) return /[lmnr]/i.test(ch) ? a : b;
+  return a + '(' + b + ')';
+}
+const DOW = '일월화수목금토';
+function ymd(s){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? {y:+m[1], m:+m[2], d:+m[3], w:DOW[new Date(+m[1], +m[2]-1, +m[3]).getDay()]} : null; }
+// 2025. 1. 6.(월) 09:00~12:00 / 2025. 1. 6.(월)~10.(금)
+function fmtWhen(d1, d2, t1, t2){
+  const a = ymd(d1), b = ymd(d2);
+  if (!a) return [t1, t2].filter(Boolean).join('~');
+  const A = `${a.y}. ${a.m}. ${a.d}.(${a.w})`;
+  if (!b || d2 === d1) return A + (t1 ? ' ' + t1 + (t2 ? '~' + t2 : '') : '');
+  const B = a.y !== b.y ? `${b.y}. ${b.m}. ${b.d}.(${b.w})` : a.m !== b.m ? `${b.m}. ${b.d}.(${b.w})` : `${b.d}.(${b.w})`;
+  if (t1 || t2) return `${A}${t1 ? ' ' + t1 : ''}~${B}${t2 ? ' ' + t2 : ''}`;
+  return `${A}~${B}`;
+}
+const txtW = s => [...String(s)].reduce((w, c) => w + (c.charCodeAt(0) < 0x2E80 ? 0.5 : 1), 0); // 굴림체 기준 글자 폭(em)
+
+/* ---------- 문서 종류 ---------- */
+const TYPES = {
+  event:   {name:'사업명', when:'일시', where:'장소', who:'대상', content:'주요 내용', verb:'실시', method:false},
+  meeting: {name:'회의명', when:'일시', where:'장소', who:'참석 대상', content:'안건', verb:'개최', method:false},
+  purchase:{name:'구매명', when:'납품 기한', where:'납품 장소', who:'사용 부서', content:'구매 내용', verb:'구매', method:'구매 방법'},
+  service: {name:'용역명', when:'용역 기간', where:'수행 장소', who:'대상', content:'과업 내용', verb:'계약', method:'계약 방법'},
+  // 시설 공사(실제 예: 엘리베이터 설치 전기·통신·소방공사, 냉난방기 교체공사) — 공사 개요 → 계약 예정안 → 사업비 구성 → 예산항목 → 향후 일정(안)
+  works:   {name:'공사명', when:'공사기간', where:'공사 장소', who:'대상', content:'주요 공사범위', verb:'시행', method:'계약 방법'},
+  // 지급(실제 예: 학문후속세대 장학금, 시험감독 수당, 튜터 장학금) — 지급 목적 → 대상 → 기준 → 지급 내역 표 → 지급 일정·방법
+  pay:     {name:'지급 건명', when:'지급 일정', where:'지급 방법', who:'지급 대상', content:'지급 기준', verb:'지급', method:false, purpose:'지급 목적'},
+  general: {name:'건명', when:'일시', where:'장소', who:'대상', content:'주요 내용', verb:'시행', method:false},
+  report:  {name:'사업명', when:'일시', where:'장소', who:'참석 대상', content:'주요 내용', verb:'실시', method:false},
+  // 협조문: 다른 부서·기관에 이유를 들어 협조를 요청(실제 예: 규정 개정 요청 — 요청사항·요청사유)
+  // 정책연구 시행: 연구과제명·연구 배경·연구 내용·연구참여진(총 N인)·연구기간(예정)·연구수행 지침(실제 정책연구 기안 7건)
+  research:{name:'연구과제명', when:'연구기간', where:'연구수행 지침', who:'대상', content:'연구 내용', verb:'추진', method:false, purpose:'연구 배경 및 필요성'},
+  // 지원사업 시행(공모·선정): 학과·교과목 지원사업 공고(실제 예: 학과특성화 프로그램, 혁신교과목 지원사업) — 지원 대상·내용·신청 기간·추진 일정·심사 기준
+  support: {name:'사업명', when:'신청 기간', where:'신청 방법', who:'지원 대상', content:'지원 내용', verb:'시행', method:false},
+  // 일반기안(외부기관 발송): 구청·학교 등 외부 기관에 보내는 시행문(실제 예: 구청 결과보고·추천, 초등학교 특강 요청)
+  external:{name:'건명', when:'일시', where:'장소', who:'대상', content:'주요 내용', verb:'요청', method:false},
+  // 안내·알림: 여러 부서에 일정·변경 사항을 알리고 필요하면 협조 사항을 붙임(실제 예: 문서 폐기 안내, 공간조정 알림, 운동장 통제 안내)
+  notice:  {name:'안내 건명', when:'일시(기간)', where:'장소', who:'대상', content:'세부 내용', verb:'안내', method:false, purpose:'취지'},
+  coop:    {name:'요청 건명', when:'협조(회신) 기한', where:'회신 방법', who:'대상', content:'요청 사항', verb:'요청', method:false, purpose:'요청 사유'},
+};
+// 종류를 바꿀 때 수신을 자동 기본값에서만 바꿈(직접 적은 수신은 그대로)
+const RECV_AUTO = ['', '내부결재', '교육혁신원장(혁신지원팀장)'];
+// 자동으로 넣은 수신·문체는 기억해 두었다가 종류가 바뀌면 다시 바꿈(사용자가 직접 고친 값은 유지)
+function autoRecv(type, found){
+  const el = $('recv'), cur = el.value.trim();
+  if (RECV_AUTO.includes(cur) || cur === el.dataset.auto || (/^(coop|external)$/.test(type) && found)){
+    el.value = type === 'report' ? '교육혁신원장(혁신지원팀장)' : /^(coop|notice|external)$/.test(type) ? (found || '') : '내부결재';
+    el.dataset.auto = el.value;
+  }
+  const st = $('style');
+  if (/^(coop|notice|external)$/.test(type)){ if (st.value !== 'polite'){ st.value = 'polite'; st.dataset.auto = '1'; } }
+  else if (st.dataset.auto){ st.value = 'plain'; delete st.dataset.auto; }
+  // 외부기관 발송: 외부 시행문·인사말·머리말을 자동으로 켜고, 다른 종류로 바꾸면 자동으로 켠 것만 되돌림
+  const ex = $('ext'), gr = $('greet'), pf = $('prefix');
+  if (type === 'external'){
+    if (!ex.checked){ ex.checked = true; ex.dataset.auto = '1'; }
+    if (!gr.checked){ gr.checked = true; gr.dataset.auto = '1'; }
+    if (pf.value === '[대학혁신지원사업]'){ pf.value = '[한국외국어대학교]'; pf.dataset.auto = '1'; }
+  } else {
+    if (ex.dataset.auto){ ex.checked = false; delete ex.dataset.auto; }
+    if (gr.dataset.auto){ gr.checked = false; delete gr.dataset.auto; }
+    if (pf.dataset.auto){ pf.value = '[대학혁신지원사업]'; delete pf.dataset.auto; }
+  }
+}
+// 종류별 첫 문장 동사(없으면 첫 문장이 정해져 있어 동사 칸을 숨김)
+const VERBS = {
+  event:['실시', '운영', '개최', '추진'], meeting:['개최', '실시'], purchase:['구매', '구입'], service:['계약'],
+  works:['시행', '추진'], pay:['지급'],
+  general:['시행', '추진', '운영', '제출', '회신', '구독', '도입'], external:['요청', '안내', '추천', '초청', '제출', '회신'],
+};
+// 종류별로 쓰는 칸(2-2: 보이는데 안 쓰이는 칸 없애기)
+const FIELDS = {
+  event:   'purpose when place who cnt content sched steps extra',
+  meeting: 'purpose when place who cnt content sched steps extra',
+  purchase:'purpose when place method content quote steps extra',
+  service: 'purpose when place method content quote contract steps extra',
+  works:   'purpose when place method content quote contract steps extra',
+  pay:     'purpose when place who cnt content steps extra',
+  general: 'purpose when place who cnt content steps extra',
+  report:  'purpose when place who cnt content team report sched extra',
+  research:'purpose when place content team steps extra',
+  support: 'purpose when place who content crit steps extra',
+  external:'purpose when place who cnt content sched steps extra',
+  notice:  'purpose when place who cnt content ask steps extra',
+  coop:    'purpose when place content steps extra',
+};
+// 결과보고 기본 붙임(실제 결과보고 기안 14건에서 자주 쓴 순서)
+const WORKS_ATTS = ['관련 규정(법규)', '견적 대비표(업체 견적서 포함)', '시공도면', '공사 계약서(안)'];
+const REPORT_ATTS = ['관련 근거', '참여자 명단', '만족도 조사 결과', '결과보고서', '지출결의서 사본'];
+function applyType(setVerb){
+  const ty = $('type').value, T = TYPES[ty], F = FIELDS[ty].split(' ');
+  const show = (id, on) => { $(id).style.display = on ? '' : 'none'; };
+  $('lbName').textContent = T.name; $('lbWhen').textContent = T.when; $('lbWhere').textContent = T.where;
+  $('lbWho').textContent = T.who; $('lbContent').textContent = T.content; $('lbPurpose').textContent = T.purpose || '목적';
+  if (T.method) $('lbMethod').textContent = T.method;
+  show('fPurpose', F.includes('purpose')); show('fWhen', F.includes('when')); show('fPlace', F.includes('place'));
+  show('wWho', F.includes('who')); show('cnt', F.includes('cnt')); show('wMethod', F.includes('method'));
+  show('fContent', F.includes('content')); show('wQuote', F.includes('quote')); show('wTeam', F.includes('team'));
+  show('wReport', F.includes('report')); show('wSched', F.includes('sched')); show('wSteps', F.includes('steps'));
+  show('wSupport', F.includes('crit')); show('wNotice', F.includes('ask')); show('fExtra', F.includes('extra'));
+  show('wContract', F.includes('contract'));
+  // 동사: 쓰는 종류만 보이고, 그 종류에 맞는 동사만 고름
+  const vs = VERBS[ty];
+  show('fVerb', !!vs);
+  if (vs){
+    const cur = $('verb').value;
+    $('verb').innerHTML = vs.map(v => `<option value="${v}">${v === '계약' ? '계약 체결' : v}</option>`).join('');
+    $('verb').value = vs.includes(cur) ? cur : T.verb;
+  }
+  show('wBudTitle', ty !== 'report');
+  $('recv').placeholder = ty === 'notice' ? '안내할 부서들 예) 교무행정팀장, 인사팀장' : ty === 'coop' ? '협조할 부서(기관)장 예) 교무처장(교무행정팀장)' : '';
+  $('noteHead').textContent = ty === 'purchase' ? '규격' : '비고';
+  $('place').placeholder = ty === 'research' ? '예) 예산은 대학혁신지원사업비를 활용' : '';
+  show('wGreet', /^(coop|notice)$/.test(ty) || $('ext').checked);
+  $('greetTxt').textContent = greetText($('ext').checked, $('recv').value);
+  if (setVerb){
+    if (!VERBS[ty]) $('verb').innerHTML = `<option value="${T.verb}">${T.verb}</option>`;
+    $('verb').value = T.verb;
+    // 결과보고는 보통 교육혁신원장(혁신지원팀장), 협조문은 협조할 부서장에게 보냄
+    autoRecv($('type').value);      // 협조문은 '…협조하여 주시기 바랍니다'(결재 요청형)가 기본
+    if (/^(purchase|service)$/.test($('type').value) && !rowsOf('attT').some(r => r.name)){ $('attT').tBodies[0].innerHTML = ''; addAtt({name:'견적서 각', cnt:'1'}); }
+    // 시설 공사 기본 붙임(실제 전기·통신·소방공사 시행 기안)
+    if ($('type').value === 'works' && !rowsOf('attT').some(r => r.name)){ $('attT').tBodies[0].innerHTML = ''; WORKS_ATTS.forEach(n => addAtt({name:n})); }
+    if ($('type').value === 'research' && !rowsOf('attT').some(r => r.name)){ $('attT').tBodies[0].innerHTML = ''; addAtt({name:'연구비 지원신청서(연구계획서, 연구비 실행예산서 포함)'}); }
+    if ($('type').value === 'report' && !rowsOf('attT').some(r => r.name)){ $('attT').tBodies[0].innerHTML = ''; (/공사/.test($('name').value) ? ['관련 근거', '지출결의서 사본', '준공사진'] : REPORT_ATTS).forEach(n => addAtt({name:n})); }
+  }
+}
+
+/* ---------- 입력 표(관련·예산·붙임) ---------- */
+function addRel(v = {}){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input type="text" data-k="no" placeholder="교무팀-1234"></td><td><input type="date" data-k="date"></td><td><input type="text" data-k="title" placeholder="문서 제목 또는 「법령·규정」 제○조"></td><td><button class="x" title="삭제">×</button></td>`;
+  fill(tr, v); $('relT').tBodies[0].append(tr); return tr;
+}
+function addRow(v = {}){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input type="text" data-k="name" placeholder="다과"></td><td><input type="text" data-k="price" inputmode="numeric" style="text-align:right"></td>
+    <td><input type="text" data-k="q1" inputmode="numeric" style="width:44px;text-align:right"></td><td><input type="text" data-k="u1" value="명" style="width:40px"></td>
+    <td><input type="text" data-k="q2" inputmode="numeric" style="width:40px;text-align:right"></td><td><input type="text" data-k="u2" value="회" style="width:40px"></td>
+    <td class="amt"><input type="text" data-k="amt" inputmode="numeric" style="text-align:right;width:92px;background:transparent" title="단가가 있으면 자동 계산"></td>
+    <td><input type="text" data-k="note" style="width:70px"></td><td><button class="x" title="삭제">×</button></td>`;
+  fill(tr, v); $('budT').tBodies[0].append(tr); syncRow(tr); return tr;
+}
+function addAcct(v = {}){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input type="text" data-k="code" placeholder="[혁신]○○ 운영(A000-00-000000)"></td><td><input type="text" data-k="item" list="acctItemList" style="width:90px" placeholder="기타학생경비"></td>
+    <td><input type="text" data-k="alloc" inputmode="numeric" style="width:96px;text-align:right"></td><td><input type="text" data-k="claimed" inputmode="numeric" style="width:90px;text-align:right" placeholder="0"></td>
+    <td><input type="text" data-k="claim" inputmode="numeric" style="width:96px;text-align:right" placeholder="자동"></td><td><button class="x" title="삭제">×</button></td>`;
+  fill(tr, v); $('acctT').tBodies[0].append(tr); return tr;
+}
+function addAtt(v = {}){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input type="text" data-k="name" placeholder="운영 계획(안)"></td><td><input type="text" data-k="cnt" value="1" style="text-align:center"></td><td><button class="x" title="삭제">×</button></td>`;
+  fill(tr, v); $('attT').tBodies[0].append(tr); return tr;
+}
+function fill(tr, v){ tr.querySelectorAll('[data-k]').forEach(i => { if (v[i.dataset.k] != null) i.value = v[i.dataset.k]; }); }
+const rowsOf = id => [...$(id).tBodies[0].rows].map(tr => { const o = {}; tr.querySelectorAll('[data-k]').forEach(i => o[i.dataset.k] = i.value.trim()); return o; });
+// 단가가 있으면 금액 = 단가×수량×횟수 (금액 칸 잠금)
+function syncRow(tr){
+  const g = k => tr.querySelector(`[data-k="${k}"]`);
+  const p = num(g('price').value);
+  if (p){ const q1 = g('q1').value.trim() ? num(g('q1').value) : 1, q2 = g('q2').value.trim() ? num(g('q2').value) : 1;
+    g('amt').value = won(p * q1 * q2); g('amt').readOnly = true; }
+  else g('amt').readOnly = false;
+}
+
+/* ---------- 입력 모으기 ---------- */
+function collect(){
+  const v = id => $(id).value.trim();
+  const rows = rowsOf('budT').filter(r => r.name || num(r.amt)).map(r => ({...r, amtN: num(r.amt), priceN: num(r.price)}));
+  const sum = rows.reduce((s, r) => s + r.amtN, 0);
+  // 예산항목 줄: 사업내용(사업코드)·계정목·현재 배정액·기청구액·본건 청구액
+  const accts = rowsOf('acctT').filter(r => r.code || r.item || r.alloc || r.claim).map(r => ({...r, allocN:num(r.alloc), claimedN:num(r.claimed), claimN:num(r.claim)}));
+  return {
+    type: v('type'), verb: v('verb'), dept: v('dept'), campus: v('campus'), recv: v('recv') || (v('type') === 'coop' ? '○○처장(○○팀장)' : v('type') === 'notice' ? '수신자참조' : '내부결재'),
+    quotes: /^(purchase|service|works)$/.test(v('type')) ? $('quotes').value : '',
+    paycond: /^(service|works)$/.test(v('type')) ? v('paycond') : '', warranty: v('type') === 'works' ? v('warranty') : '',
+    steps: $('steps').value, crit: $('crit').value, team: /^(research|report)$/.test(v('type')) ? $('team').value : '',
+    sched: /^(event|meeting|report|external)$/.test(v('type')) ? $('sched').value : '',
+    recvList: v('recv').split(/\s*[,，、]\s*/).filter(Boolean), greet: $('greet').checked, ext: $('ext').checked, ask: $('ask').value, title: v('title'),
+    rel: rowsOf('relT').filter(r => r.no || r.title), name: v('name'), purpose: v('purpose'),
+    d1: v('d1'), d2: v('d2'), t1: v('t1'), t2: v('t2'), place: v('place'), who: v('who'), cnt: num($('cnt').value), method: v('method'),
+    content: $('content').value, extra: $('extra').value, pay: v('pay'), vat: v('vat'), tmode: v('tmode'),
+    rows, sum, accts, acct: accts.length ? accts[0].code : '', totalIn: num($('totalIn').value), total: rows.length ? sum : num($('totalIn').value),
+    prefix: v('prefix'), style: v('style'), layout: v('layout'), bg: $('bg').value.trim(), 
+    biz: ['bzArea', 'bzStrat', 'bzTask', 'bzSub', 'bzBimok'].map(v), sat: v('sat'), outcome: $('outcome').value,
+    innov: /대학\s*혁신\s*지원\s*사업|혁신\s*(?:지원\s*)?사업\s*(?:비|예산)|혁신사업비|\[혁신\]/.test([$('desc').value, v('name'), v('purpose'), $('content').value, $('extra').value, $('bg').value, ...accts.map(a => `${a.code} ${a.item}`)].join('\n')),
+    budTitle: $('budTitle').checked, closeOn: $('closeOn').checked, closing: v('closing'), atts: rowsOf('attT').filter(r => r.name),
+  };
+}
+
+/* ---------- 기안문 모형 만들기 ---------- */
+// 제목에 넣을 짧은 목적: '연구 환경 개선을 위해' → '연구 환경 개선'
+function shortPurpose(p){
+  p = String(p || '').trim().replace(/\s*(?:하기\s*)?(?:위해서?|위하여|위함)\s*$/, '').replace(/(?:을|를)\s*$/, '').trim();
+  if (/하고\s/.test(p)) p = p.replace(/([가-힣])(?:을|를)\s/g, '$1 ').replace(/하고\s/g, ' 및 ');
+  return p.length >= 2 && p.length <= 20 && /[가-힣]$/.test(p) ? p : '';
+}
+function autoTitle(f){
+  const first = f.content.split(/\r?\n/).map(l => l.trim().replace(/^[-•·○▪]\s*/, '')).find(Boolean) || '';
+  // 내용: 사업명(없으면 첫 내용 줄)에서 '3대' 같은 수량은 뺌
+  const n = (f.name || first || '○○').replace(/\s*\d+\s*(?:대|개|명|식|세트|종|건|부|권|점|set)\s*$/i, '').trim();
+  const verb = f.verb === '계약' ? ' 계약 체결' : ' ' + f.verb;
+  let base = new RegExp(f.verb + '$').test(n) ? n : n + verb;
+  const pp = shortPurpose(f.purpose);
+  if (pp && !n.includes(pp)) base = `${pp}${josa(pp, '을', '를')} 위한 ${base}`;
+  if (f.type === 'report') base = (/결과\s*보고$/.test(n) ? n : `${n} 결과보고`);
+  if (f.type === 'research') base = new RegExp(f.verb + '$').test(n) ? n : `${n} ${f.verb}`;   // '~에 관한 일'은 쓰지 않음(공문서 표본)
+  if (f.type === 'support') base = /(시행|공고|모집)$/.test(n) ? n : `${n} 시행`;
+  if (f.type === 'external'){ const vb = f.verb === '계약' ? '계약 체결' : f.verb; base = new RegExp(vb + '$').test(n) ? n : `${n} ${vb}`; if (pp && !n.includes(pp)) base = `${pp}${josa(pp, '을', '를')} 위한 ${base}`; }
+  if (f.type === 'notice') base = /(안내|알림|공유)$/.test(n) ? n : `${n} 안내`;
+  if (f.type === 'coop'){   // 실제 예: '…이행을 위한 규정 개정 요청'
+    base = /(요청|협조)$/.test(n) ? n : `${n} 요청`;
+    if (pp && !n.includes(pp)) base = `${pp}${josa(pp, '을', '를')} 위한 ${base}`;
+  }
+  return (f.prefix ? f.prefix + ' ' : '') + base + (f.type !== 'report' && f.budTitle && f.total > 0 ? ' 및 소요예산 집행' : '');
+}
+// 세부 항목 없이 붙임만 보내는 회신·제출(실제 예: '업무 추진 계획서를 붙임과 같이 회신합니다.')
+const attOnly = f => f.type === 'general' && f.atts.length > 0 && !(f.purpose || f.d1 || f.place || f.who || f.cnt || f.content.trim() || f.extra.trim() || f.total > 0);
+function lead(f, hasRel){
+  const pre = f.bg ? '이에 ' : hasRel ? '위 호와 관련하여 ' : '';
+  // 목적을 첫 문장에: '…을 위하여 다음과 같이 ○○을 구입하고자 합니다.'(실제 전산장비 구입 기안)
+  // 목적 안에 '…을 공유하고 …을 논의'처럼 목적어가 있으면 '논의하기 위하여', 명사구면 '개선을 위하여'
+  const why = !f.purpose ? '' : /[가-힣](?:을|를)\s/.test(f.purpose) && /[가-힣]$/.test(f.purpose)
+    ? `${f.purpose}하기 위하여 ` : `${f.purpose}${josa(f.purpose, '을', '를')} 위하여 `;
+  const polite = f.style === 'polite';
+  if (attOnly(f)){
+    const obj = f.name ? `${f.name}${josa(f.name, '을', '를')} ` : '';
+    return `${pre}${obj}붙임과 같이 ${f.verb}${polite ? '하오니 업무에 참고하여 주시기 바랍니다.' : '합니다.'}`;
+  }
+  if (f.type === 'report'){
+    const what = f.name ? `${f.name} 결과를` : '결과를';
+    return `${pre}${what} 다음과 같이 ${polite ? '보고하오니 결재하여 주시기 바랍니다.' : '보고합니다.'}`;
+  }
+  if (f.type === 'research'){
+    const obj = f.name ? `${f.name}${josa(f.name, '을', '를')} ` : '';
+    const why = shortPurpose(f.purpose);
+    return `${pre}${why ? `${why}${josa(why, '을', '를')} 위하여 ` : ''}${obj}다음과 같이 ${f.verb}하고자 ${polite ? '하오니 결재하여 주시기 바랍니다.' : '합니다.'}`;
+  }
+  if (f.type === 'support'){
+    const obj = f.name ? `${f.name}${josa(f.name, '을', '를')} ` : '';
+    return `${pre}${why}다음과 같이 ${obj}${f.verb}하고자 ${polite ? '하오니 결재하여 주시기 바랍니다.' : '합니다.'}`;
+  }
+  if (f.type === 'external'){
+    // 예: '…특강 강사 파견을 다음과 같이 요청하오니 협조하여 주시기 바랍니다.'
+    const v = f.verb === '계약' ? '계약을 체결' : f.verb;
+    const obj = f.name ? `${f.name}${josa(f.name, '을', '를')} ` : '';
+    const tail = /요청|협조|추천|초청/.test(f.verb) ? '협조하여 주시기 바랍니다.' : '업무에 참고하여 주시기 바랍니다.';
+    return polite ? `${pre}${why}다음과 같이 ${obj}${v}하오니 ${tail}` : `${pre}${why}다음과 같이 ${obj}${v}합니다.`;
+  }
+  if (f.type === 'notice'){
+    const obj = f.name ? `${f.name}${josa(f.name, '을', '를')} ` : '';
+    const ask = f.ask.trim();
+    return polite ? `${pre}${obj}다음과 같이 안내하오니 ${ask ? '협조하여' : '업무에 참고하여'} 주시기 바랍니다.` : `${pre}${obj}다음과 같이 안내합니다.`;
+  }
+  if (f.type === 'coop'){
+    const obj = f.name ? `${f.name}${josa(f.name, '을', '를')} ` : '';
+    return polite ? `${pre}${obj}다음과 같이 요청하오니 협조하여 주시기 바랍니다.`
+                  : `${pre}${obj ? obj + '다음과 같이 요청합니다.' : '다음과 같이 협조를 요청합니다.'}`;
+  }
+  const obj = f.name ? (f.verb === '계약' ? `${f.name} 계약을 ` : `${f.name}${josa(f.name, '을', '를')} `) : (f.verb === '계약' ? '계약을 ' : '');
+  const vv = f.verb === '계약' ? '체결' : f.verb;
+  return `${pre}${why}다음과 같이 ${obj}${vv}하고자 ${polite ? '하오니 결재하여 주시기 바랍니다.' : '합니다.'}`;
+}
+function expr(r){
+  if (!r.priceN) return `${won(r.amtN)}원`;
+  let s = `${won(r.priceN)}원`;
+  if (r.q1) s += `×${r.q1}${r.u1}`;
+  if (r.q2) s += `×${r.q2}${r.u2}`;
+  return s + `=${won(r.amtN)}원`;
+}
+function buildModel(f){
+  const T = TYPES[f.type], B = [];
+  const P = (lv, mk, text) => B.push({k:'p', lv, mk, text});
+  let top = 0;
+  // 인사말(실제 협조·안내 공문 19건 중 6건): 1. 귀 부서의 협조에 감사드립니다.
+  // 외부 기관 시행문은 '귀 기관의 무궁한 발전을 기원합니다.'(구청·초등학교 발송 사례)
+  if (f.greet && (/^(coop|notice)$/.test(f.type) || f.ext)) P(0, `${++top}.`, greetText(f.ext, f.recv));
+  // 관련
+  if (f.rel.length){
+    // 문서번호가 없으면 법령·규정 근거로 보고 따옴표 없이 씀. 규정 이름에 낫표가 없으면 붙임(예: 물품관리규정 제7조 → 「물품관리규정」 제7조)
+    const law = t => String(t).replace(/^(?!「)([가-힣·\s]+?(?:법률|법|시행령|시행규칙|규정|규칙|지침|세칙|협약서?))\s*(제\s*\d+\s*조.*)$/, '「$1」 $2');
+    const one = r => {
+      const d = ymd(r.date);
+      if (!r.no) return `${law(r.title)}${d ? `(${d.y}. ${d.m}. ${d.d}.)` : ''}`.trim();
+      return `${r.no}${d ? `(${d.y}. ${d.m}. ${d.d}.)` : ''}${r.title ? (/^「/.test(r.title) ? ` ${r.title}` : ` "${r.title}"`) : ''}`.trim();
+    };
+    if (f.rel.length === 1) P(0, `${++top}.`, `관련: ${one(f.rel[0])}`);
+    else { P(0, `${++top}.`, '관련'); f.rel.forEach((r, i) => P(1, `${KO[i]}.`, one(r))); }
+  }
+  // 2. 본문 첫 문장 + 세부 항목
+  if (f.bg) P(0, `${++top}.`, f.bg.replace(/\s+/g, ' ').replace(/([^.])$/, '$1.'));
+  P(0, `${++top}.`, lead(f, f.rel.length > 0));
+  let sub = 0; const S = t => P(1, `${KO[sub++]}.`, t);
+  const cl = f.content.split(/\r?\n/).map(l => l.replace(/\s+$/, '')).filter(l => l.trim());
+  // 사업비 구성 해당 항목: 칸을 채웠거나, 본문에 대학혁신지원사업·혁신 사업비가 있거나, 예산항목 사업내용에 [혁신]이 있으면(사용자 지시 2026-11-03)
+  const bizOn = f.biz.some(Boolean) || f.innov;
+  const bizBlock = (lv, mk) => { if (!bizOn) return; P(lv, mk, '사업비 구성 해당 항목'); B.push(bizGrid(lv)); };
+  const bizGrid = lv => ({k:'grid', lv, head:['영역', '혁신전략', '핵심과제', '실행과제', '비목'], rows:[f.biz], num:[]});
+  // 예산항목 표(예산이 있으면 항상): 연번|사업내용(사업코드)|계정목|현재 배정액|기청구액|청구 전 예산잔액|본건 청구액|청구 후 예산잔액 + 신청금액 합계
+  // (참고: 통계학과 전산 기자재 구매 기안의 '예산' 표 — 예산항목 2줄 + 신청금액 합계)
+  const acctRows = () => {
+    const list = f.accts.length ? f.accts : [{code:'', item:'', allocN:0, claimedN:0, claimN:0, alloc:'', claimed:''}];
+    return list.map((r, i) => {
+      const claim = r.claimN || (list.length === 1 ? f.total : 0);
+      const has = !!r.alloc;
+      const before = r.allocN - r.claimedN;
+      return {...r, claim, cells:[String(i + 1), r.code, r.item, has ? won(r.allocN) : '', has || r.claimed ? won(r.claimedN) : '', has ? won(before) : '', claim ? won(claim) : '', has ? won(before - claim) : '']};
+    });
+  };
+  const acctBlock = (lv, mk) => {
+    const rs = acctRows(), tot = rs.reduce((a, r) => a + r.claim, 0);
+    P(lv, mk, '예산항목');
+    B.push({k:'grid', lv, small:true, head:['연번', '사업내용\n(사업코드)', '계정목', '현재\n배정액', '기청구액', '청구 전\n예산잔액', '본건\n청구액', '청구 후\n예산잔액'],
+      rows: rs.map(r => r.cells), sum:['신청금액 합계', '', '', '', '', '', won(tot), ''], num:[3, 4, 5, 6, 7]});
+  };
+  // 행사 일정(안) 표: 시간 | 소요 | 내용 | 비고 (실제 오리엔테이션·성과보고회 기안 형식)
+  const toM = x => { const [h, m] = x.split(':').map(Number); return h * 60 + m; };
+  const pad2 = x => x.replace(/^(\d):/, '0$1:');
+  const schedRows = f.sched.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
+    const m = /^(\d{1,2}:\d{2})\s*[~∼\-–]\s*(\d{1,2}:\d{2})\s*(.*)$/.exec(l);
+    if (!m) return {span: l};          // '1부: 발대식 진행' 같은 구분 줄은 한 줄 전체
+    const d = toM(m[2]) - toM(m[1]), [txt, note] = m[3].split(/\s*\/\s*/);
+    return [`${pad2(m[1])}~${pad2(m[2])}`, d > 0 ? `${d}'` : '', txt || '', note || ''];
+  });
+  // 추진(제작) 일정 표: 단계 | 일정 (가이드북 제작·지원사업 공고 등)
+  const stepRows = f.steps.split(/\r?\n/).map(l => l.trim().replace(/^[-•·▪]\s*/, '')).filter(Boolean).map(l => { const [a, ...b] = l.split(/\s*\/\s*/); return [a, b.join(' / ')]; });
+  const stepsBlock = (title = '추진 일정') => { if (!stepRows.length || f.type === 'report') return; S(title); B.push({k:'grid', lv:1, head:['단계', '일정'], rows:stepRows, num:[]}); };
+  // 시간이 하나도 없으면 식순 표: 순서 | 내용 | 비고
+  const schedNoTime = schedRows.length > 0 && schedRows.every(r => !Array.isArray(r));
+  const schedBlock = title => {
+    if (!schedRows.length) return;
+    if (schedNoTime){
+      let i = 0;
+      const rows = schedRows.map(r => { const [txt, note] = r.span.replace(/^(?:\d{1,2}[.)]|[-•·▪])\s*/, '').split(/\s*\/\s*/); return [String(++i), txt || '', note || '']; });
+      S(title.replace('일정', '식순')); B.push({k:'grid', lv:1, head:['순서', '내용', '비고'], rows, num:[]}); return;
+    }
+    S(title); B.push({k:'grid', lv:1, head:['시간', '소요', '내용', '비고'], rows:schedRows, num:[]});
+  };
+  const amtText = () => `금${won(f.total)}원(금${hanAmt(f.total)}원${f.vat ? ', ' + f.vat : ''})`;
+  // 공통 마무리: 소요예산(산출 표) → 예산항목 표 → 사업비 구성 → 집행 방법 / 맺음 → 붙임
+  const tailBudget = (o = {}) => {
+    if (f.total > 0 && !o.noAmount){
+      S(`소요예산: ${amtText()}`);
+      if (f.rows.length){
+        if (f.tmode === 'table') B.push({k:'table', lv:1, rows:f.rows, total:f.total});
+        else f.rows.forEach((r, i) => P(2, `${i + 1})`, `${r.name || '항목'}: ${expr(r)}${r.note ? ` (${r.note})` : ''}`));
+      }
+    }
+    // 순서: 소요예산 → 사업비 구성 해당 항목 → 예산항목
+    if (!o.noBiz && bizOn) bizBlock(1, `${KO[sub++]}.`);
+    if (f.total > 0 && !o.noAcct) acctBlock(1, `${KO[sub++]}.`);
+    if (f.total > 0 && f.pay) S(`집행 방법: ${f.pay}`);
+  };
+  // 추가 항목: '항목: 내용' 한 줄씩, 제목 줄 아래 '- ' 줄은 1) 2)로(실제 기안의 기대효과·추진배경·구입배경 묶음)
+  const extraGroups = skip => {
+    const out = [];
+    f.extra.split(/\r?\n/).forEach(l => {
+      if (!l.trim()) return;
+      if (/^\s*[-•·]/.test(l) && out.length) out[out.length - 1].subs.push(l.trim().replace(/^[-•·]\s*/, ''));
+      else out.push({h: l.trim().replace(/\s*[:：]\s*/, ': ').replace(/:\s*$/, ''), subs: []});
+    });
+    return skip ? out.filter(g => !skip.test(g.h)) : out;
+  };
+  const extraOut = skip => extraGroups(skip).forEach(g => {
+    if (!g.subs.length){ S(g.h); return; }
+    S(g.h); g.subs.forEach((x, i) => P(2, `${i + 1})`, x));
+  });
+  const finish = () => {
+    if (f.closeOn && f.closing) P(0, `${++top}.`, f.closing);
+    if (f.atts.length) B.push({k:'att', items:f.atts.map(a => `${a.name} ${a.cnt || 1}부.`)});
+    return B;
+  };
+  // 비교견적: 업체명 / 금액 → 가장 싼 곳 선정
+  const quoteRows = f.quotes.split(/\r?\n/).map(l => l.trim().replace(/^[-•·▪]\s*/, '')).filter(Boolean).map(l => {
+    const m = /^(.+?)\s*(?:[/|:：]\s*|\s+)(?:금\s*)?([\d,]+)\s*원?\s*(.*)$/.exec(l);
+    return m ? {name:m[1].trim(), amt:num(m[2]), note:m[3].trim()} : null;
+  }).filter(Boolean);
+  const quoteSel = quoteRows.length ? quoteRows.reduce((a, b) => b.amt < a.amt ? b : a) : null;
+  const quoteBlock = () => {
+    if (!quoteRows.length) return;
+    S(`${f.type === 'purchase' ? '구매업체' : '계약 상대자'}: ${quoteSel.name}`);
+    S(`선정방법: ${quoteRows.length > 1 ? '비교견적에 의한 최저가업체 선정' : '단일견적'}`);
+    B.push({k:'grid', lv:1, head:['번호', '업체명', `금액(원${f.vat === '부가가치세 별도' ? ', VAT 별도' : ', VAT 포함'})`, '비고'],
+      rows: quoteRows.map((q, i) => [String(i + 1), q.name, won(q.amt), q === quoteSel ? '선정' : q.note]), num:[2]});
+  };
+  if (f.type === 'purchase'){
+    // 실제 물품 구매 기안 13건 공통(전산장비·시약·기자재): 품명, 규격 및 수량 표(연번|품명|모델명(규격)|수량|납품장소)
+    // → 구매금액(금…원(금…원, 부가가치세 포함)) → 구매업체 → 구매방법(비교견적 표, 선정 업체 비고 '발주') → 사업비 구성 → 예산항목
+    if (f.purpose) S(`목적: ${f.purpose}`);
+    if (cl.length === 1) S(`${T.content}: ${cl[0].trim().replace(/^[-•·▪]\s*/, '')}`);
+    else if (cl.length){ S(T.content); cl.forEach((l, i) => P(2, `${i + 1})`, l.trim().replace(/^[-•·▪]\s*/, ''))); }
+    if (f.rows.length){
+      S('품명, 규격 및 수량');
+      const n = f.rows.length, plc = f.place || '';
+      B.push({k:'grid', lv:1, head:['연번', '품명', '모델명(규격)', '수량', '납품장소'],
+        rows: f.rows.map((r, i) => {
+          // 규격 칸이 비었고 품명 끝에 괄호가 있으면 괄호 안을 모델명(규격)으로
+          const m = !r.note && /^(.+?)\s*\(([^()]+)\)$/.exec(r.name || '');
+          return [String(i + 1), m ? m[1] : r.name, m ? m[2] : r.note, r.q1 ? `${r.q1}${r.u1 === '명' ? '' : r.u1}` : '', i === 0 ? (n > 1 ? {v: plc, rs: n} : plc) : null];
+        }), num:[]});
+    } else if (f.place) S(`${T.where}: ${f.place}`);
+    if (f.total > 0) S(`구매금액: 금${won(f.total)}원(금${hanAmt(f.total)}원, ${f.vat || '부가가치세 포함'})`);
+    if (quoteSel) S(`구매업체: ${quoteSel.name}`);
+    const w = fmtWhen(f.d1, f.d2, '', ''); if (w) S(`${T.when}: ${w}${f.d2 ? '' : '까지'}`);
+    if (quoteRows.length > 1){
+      S(`${T.method}: ${f.method || '비교견적에 의한 최저가업체 선정'}`);
+      B.push({k:'grid', lv:1, head:['번호', '업체명', `금액(원${f.vat === '부가가치세 별도' ? ', VAT 별도' : ', VAT 포함'})`, '비고'],
+        rows: quoteRows.map((q, i) => [String(i + 1), q.name, won(q.amt), q === quoteSel ? '발주' : q.note]), num:[2]});
+    } else if (f.method || f.total > 0) S(`${T.method}: ${f.method || autoMethod(f)}`);
+    stepsBlock();
+    extraOut();
+    if (f.total > 0){ if (bizOn) bizBlock(1, `${KO[sub++]}.`); acctBlock(1, `${KO[sub++]}.`); }
+    else tailBudget({noAmount:true, noAcct:true});
+    return finish();
+  }
+  // 연구참여진(총 N인): 쉼표로 나눈 사람 수를 셈
+  const teamLines = f.team.split(/\r?\n/).map(l => l.trim().replace(/^[-•·▪]\s*/, '')).filter(Boolean);
+  const teamN = teamLines.reduce((a, l) => a + l.replace(/^[^:：]*[:：]\s*/, '').split(/\s*[,，]\s*/).filter(Boolean).length, 0);
+  const teamBlock = (lv, mk) => { if (!teamLines.length) return; P(lv, mk, `연구참여진(총 ${teamN}인)`); teamLines.forEach((l, i) => P(lv + 1, lv === 1 ? `${i + 1})` : `${KO[i]})`, l.replace(/\s*[:：]\s*/, ': '))); };
+  if (f.type === 'research'){
+    // 연구과제명 → 연구 배경 → 연구 내용 → 연구참여진 → 연구기간 → 연구수행 지침 → 추진 일정 → 소요예산 → 사업비 구성 → 예산항목
+    if (f.name) S(`${T.name}: ${f.name}`);
+    if (f.purpose) S(`${T.purpose}: ${f.purpose}`);
+    if (cl.length === 1) S(`${T.content}: ${cl[0].trim().replace(/^[-•·▪]\s*/, '')}`);
+    else if (cl.length){ S(T.content); let i2 = 0; cl.forEach(l => { if (/^\s*※/.test(l)) { P(3, '', l.trim()); return; } P(2, `${++i2})`, l.trim().replace(/^[-•·▪]\s*|^\d+[.)]\s*/, '')); }); }
+    if (teamLines.length) teamBlock(1, `${KO[sub++]}.`);
+    if (f.d1) S(`${T.when}: ${fmtWhen(f.d1, '', '', '')}${f.d2 ? ' ~ ' + fmtWhen(f.d2, '', '', '') : ''}${f.d1 >= new Date().toISOString().slice(0, 10) ? '(예정)' : ''}`.replace(/\.\([일월화수목금토]\)/g, '.'));
+    if (f.place) S(`${T.where}: ${f.place}`);
+    stepsBlock();
+    extraOut();
+    tailBudget();
+    return finish();
+  }
+  if (f.type === 'support'){
+    // 사업 목적 → 지원 대상 → 지원 내용 → 신청 기간·방법 → 추진 일정 표 → 심사 기준 표 → 소요예산 → 사업비 구성 → 예산항목
+    if (f.purpose) S(`사업 목적: ${f.purpose}`);
+    if (f.who) S(`${T.who}: ${f.who}`);
+    if (cl.length === 1) S(`${T.content}: ${cl[0].trim().replace(/^[-•·▪]\s*/, '')}`);
+    else if (cl.length){ S(T.content); let i2 = 0, i3 = 0; cl.forEach(l => { if (/^\s*※/.test(l)) { P(3, '', l.trim()); return; } if (/^\s+-/.test(l)) P(3, `${KO[i3++]})`, l.replace(/^\s*-\s*/, '')); else { P(2, `${++i2})`, l.trim().replace(/^[-•·▪]\s*|^\d+[.)]\s*/, '')); i3 = 0; } }); }
+    if (f.d1) S(`${T.when}: ${f.d2 ? fmtWhen(f.d1, f.d2, f.t1, f.t2) : fmtWhen(f.d1, '', f.t1, '') + '까지'}`);
+    if (f.place) S(`${T.where}: ${f.place}`);
+    stepsBlock();
+    const cr = f.crit.split(/\r?\n/).map(l => l.trim().replace(/^[-•·▪]\s*/, '')).filter(Boolean).map(l => {
+      const m = /^(.+?)\s*[:：]\s*(\d{1,3})\s*점?\s*(?:\/\s*(.*))?$/.exec(l);
+      return m ? [m[1], `${m[2]}점`, m[3] || ''] : [l, '', ''];
+    });
+    if (cr.length){
+      const tot = cr.reduce((a, r) => a + (parseInt(r[1]) || 0), 0);
+      const withDesc = cr.some(r => r[2]);
+      S('심사 기준');
+      B.push({k:'grid', lv:1, head: withDesc ? ['심사 기준', '배점', '내용'] : ['심사 기준', '배점'], rows: cr.map(r => withDesc ? r : r.slice(0, 2)).concat([withDesc ? ['합계', `${tot}점`, ''] : ['합계', `${tot}점`]]), num:[]});
+    }
+    extraOut();
+    tailBudget();
+    return finish();
+  }
+  if (f.type === 'notice'){
+    // 취지 → 일시 → 장소 → 대상 → 세부 내용 → 협조 사항 → 기타(문의 등)
+    if (f.purpose) S(`${T.purpose}: ${f.purpose}`);
+    const w = fmtWhen(f.d1, f.d2, f.t1, f.t2); if (w) S(`${T.when}: ${w}`);
+    if (f.place) S(`${T.where}: ${f.place}`);
+    if (f.who || f.cnt) S(`${T.who}: ${[f.who, f.cnt && !/\d+\s*명/.test(f.who) ? `${f.cnt}명` : ''].filter(Boolean).join(' ')}`);
+    const list = (title, lines) => {
+      if (lines.length === 1) { S(`${title}: ${lines[0].trim().replace(/^[-•·○▪]\s*/, '')}`); return; }
+      if (!lines.length) return;
+      S(title); let i2 = 0, i3 = 0;
+      lines.forEach(l => { if (/^\s*※/.test(l)) { P(3, '', l.trim()); return; } if (/^\s+-/.test(l)) P(3, `${KO[i3++]})`, l.replace(/^\s*-\s*/, '')); else { P(2, `${++i2})`, l.trim().replace(/^[-•·○▪]\s*|^\d+[.)]\s*/, '')); i3 = 0; } });
+    };
+    list(T.content, cl);
+    stepsBlock();
+    list('협조 사항', f.ask.split(/\r?\n/).filter(l => l.trim()));
+    extraOut();
+    tailBudget();
+    return finish();
+  }
+  if (f.type === 'coop'){
+    // 요청 사항 → 요청 사유 → 협조 기한 → 회신 방법
+    const DEPT = /^\s*(?:[-•·▪]\s*)?([가-힣A-Za-z·]{2,15}(?:팀|처|센터|원|실|과|단|본부)(?:\([^)]*\))?)\s*[:：]\s*(.+)$/;
+    if (cl.length >= 2 && cl.every(l => DEPT.test(l))){
+      S('부서별 요청 사항');
+      B.push({k:'grid', lv:1, head:['부서', '요청 사항'], rows:cl.map(l => { const m = DEPT.exec(l); return [m[1], m[2].trim()]; }), num:[]});
+    }
+    else if (cl.length === 1 && !/^\s*-/.test(cl[0])) S(`요청 사항: ${cl[0].trim().replace(/^[•·○▪]\s*/, '')}`);
+    else if (cl.length){
+      S('요청 사항'); let i2 = 0, i3 = 0;
+      cl.forEach(l => {
+        if (/^\s*※/.test(l)) { P(3, '', l.trim()); return; }
+        if (/^\s*-\s*-/.test(l) || /^\s{2,}-/.test(l)) P(3, `${KO[i3++]})`, l.replace(/^\s*-\s*-?\s*/, ''));
+        else { P(2, `${++i2})`, l.trim().replace(/^[-•·○▪]\s*|^\d+[.)]\s*/, '')); i3 = 0; }
+      });
+    }
+    if (f.purpose) S(`요청 사유: ${f.purpose}`);
+    stepsBlock();
+    if (f.d1) S(`${T.when}: ${fmtWhen(f.d1, '', f.t1, '')}까지`);
+    if (f.place) S(`${T.where}: ${f.place}`);
+    extraOut();
+    tailBudget();
+    return finish();
+  }
+  if (f.type === 'report'){
+    // 실제 결과보고 기안의 순서: 사업명 → 운영 개요 → 사업비 구성 항목 → 수행 결과 및 성과
+    if (f.name) S(`${T.name}: ${f.name}`);
+    if (teamLines.length) teamBlock(1, `${KO[sub++]}.`);
+    const ov = [];
+    if (f.purpose) ov.push(`목적: ${f.purpose}`);
+    const when0 = fmtWhen(f.d1, f.d2, f.t1, f.t2); if (when0) ov.push(`${f.d2 && f.d2 !== f.d1 ? (/공사/.test(f.name) ? '공사기간' : '운영기간') : '일시'}: ${when0}`);
+    if (f.place) ov.push(`장소: ${f.place}`);
+    if (f.who || f.cnt) ov.push(`참석 인원: ${[f.who, f.cnt && !/\d+\s*명/.test(f.who) ? `${f.cnt}명` : ''].filter(Boolean).join(' ')}`);
+    if (ov.length || cl.length){
+      S('운영 개요'); let i2 = 0;
+      ov.forEach(t => P(2, `${++i2})`, t));
+      if (cl.length === 1 && !/^\s*-/.test(cl[0])) P(2, `${++i2})`, `주요 내용: ${cl[0].trim()}`);
+      else if (cl.length){ P(2, `${++i2})`, '주요 내용'); let i3 = 0; cl.forEach(l => P(3, `${KO[i3++]})`, l.trim().replace(/^[-•·○▪]\s*|^\d+[.)]\s*/, ''))); }
+    }
+    schedBlock('행사 일정');
+    extraOut();
+    if (!(f.total > 0) && bizOn) bizBlock(1, `${KO[sub++]}.`);      // 소요예산이 없으면 여기에
+    const oc = f.outcome.split(/\r?\n/).map(l => l.trim().replace(/^[-•·○▪]\s*/, '')).filter(Boolean);
+    if (f.total > 0 || f.sat || oc.length){
+      S('수행 결과 및 성과'); let i2 = 0;
+      if (f.total > 0){
+        P(2, `${++i2})`, `소요예산: ${amtText()}`); let i3 = 0;
+        if (f.rows.length){ P(3, `${KO[i3++]})`, '산출 내용'); B.push({k:'table', lv:3, rows:f.rows, total:f.total}); }
+        if (bizOn) bizBlock(3, `${KO[i3++]})`);
+        acctBlock(3, `${KO[i3++]})`);
+      }
+      if (f.sat) P(2, `${++i2})`, `만족도 조사 결과: ${f.sat}`);
+      if (oc.length){ P(2, `${++i2})`, '성과 및 향후 개선 사항'); oc.forEach((t, i) => P(3, `${KO[i]})`, t)); }
+    }
+    return finish();
+  }
+  // 줄 목록: 한 줄이면 '제목: 내용', 여러 줄이면 1) 가) (lv: 제목 줄 단계)
+  const listAt = (lv, mk, title, lines) => {
+    if (!lines.length) return false;
+    if (lines.length === 1 && !/^\s*-/.test(lines[0])){ P(lv, mk, `${title}: ${lines[0].trim().replace(/^[•·○▪]\s*/, '')}`); return true; }
+    P(lv, mk, title); let i2 = 0, i3 = 0;
+    lines.forEach(l => {
+      if (/^\s*※/.test(l)) { P(lv + 2, '', l.trim()); return; }
+      if (/^\s+-/.test(l) && i2) P(lv + 2, lv === 1 ? `${KO[i3++]})` : `(${++i3})`, l.replace(/^\s*-\s*/, ''));
+      else { P(lv + 1, lv === 1 ? `${++i2})` : `${KO[i2++]})`, l.trim().replace(/^[-•·○▪]\s*|^\d+[.)]\s*/, '')); i3 = 0; }
+    });
+    return true;
+  };
+  if (f.type === 'works' || f.type === 'service'){
+    // 실제 공사·감리용역 시행 기안: 관련 근거(구매규정 제9조 등) → 공사(용역) 개요 → 계약 예정안 → 사업비 구성 → 예산항목 → 향후 일정(안)
+    const kind = f.type === 'works' ? '공사' : '용역';
+    if (f.purpose) S(`목적: ${f.purpose}`);
+    const ov = [];
+    if (f.name) ov.push(`${T.name}: ${f.name}`);
+    const w = fmtWhen(f.d1, f.d2, '', ''); if (w) ov.push(`${T.when}: ${w}`);
+    if (f.place) ov.push(`${T.where}: ${f.place}`);
+    const OVK = /^(공사\s*기간|용역\s*기간|공사\s*위치|공사\s*장소|수행\s*장소|과업\s*범위|분야별\s*과업\s*범위)\s*:/;
+    extraGroups().filter(g => OVK.test(g.h)).forEach(g => ov.push(g.h));
+    if (ov.length || cl.length){
+      S(`${kind} 개요`); let i2 = 0;
+      ov.forEach(t => P(2, `${++i2})`, t));
+      listAt(2, `${++i2})`, T.content, cl);
+    }
+    const ct = [];
+    if (f.total > 0) ct.push([`계약 예정 금액: ${amtText()}`]);
+    if (quoteSel) ct.push([`계약 예정 업체: ${quoteSel.name}`]);
+    if (f.method || f.total > 0) ct.push([`계약 방법: ${f.method || autoMethod(f)}`]);
+    const done = f.type === 'works' ? '준공검사 완료 시' : '용역 완료 시';
+    if (f.paycond === 'once') ct.push([`대금 지급 조건: 현금 일시 지급(${done.replace(' 시', ' 후')})`]);
+    if (f.paycond === 'split2') ct.push(['대금 지급 조건: 현금 지급(2회 분할 지급)', `1차(기성금): ${f.type === 'works' ? '공정률' : '과업 진척률'} 50% 도달 시 계약금액의 50%`, `2차(잔금): ${done} 계약금액의 50%`]);
+    if (f.warranty) ct.push([`하자보수보증: ${f.warranty}, 하자이행보증증권으로 제출`]);
+    if (ct.length){
+      S('계약 예정안'); let j = 0;
+      ct.forEach(([h, ...subs]) => { P(2, `${++j})`, h); subs.forEach((s, k) => P(3, `${KO[k]})`, s)); });
+      if (quoteRows.length > 1){
+        P(2, `${++j})`, '선정방법: 비교견적에 의한 최저가업체 선정');
+        B.push({k:'grid', lv:2, head:['번호', '업체명', `금액(원${f.vat === '부가가치세 별도' ? ', VAT 별도' : ', VAT 포함'})`, '비고'],
+          rows: quoteRows.map((q, i) => [String(i + 1), q.name, won(q.amt), q === quoteSel ? '선정' : q.note]), num:[2]});
+      }
+    }
+    extraOut(OVK);
+    tailBudget({noAmount:true});
+    stepsBlock('향후 일정(안)');
+    return finish();
+  }
+  if (f.type === 'pay'){
+    // 지급 목적 → 지급 대상 → 지급 기준 → 지급 내역 표(구분|지급금액|산출내역|비고) → 지급 일정 → 지급 방법 → 사업비 구성 → 예산항목
+    if (f.purpose) S(`${T.purpose}: ${f.purpose}`);
+    if (f.who || f.cnt) S(`${T.who}: ${[f.who, f.cnt && !/\d+\s*명/.test(f.who) ? `${f.cnt}명` : ''].filter(Boolean).join(' ')}`);
+    if (cl.length) listAt(1, `${KO[sub++]}.`, T.content, cl);
+    if (f.total > 0){
+      S(`지급 금액: ${amtText()}`);
+      if (f.rows.length){
+        P(2, '1)', '지급 내역');
+        B.push({k:'grid', lv:2, head:['구분', '지급금액(원)', '산출내역', '비고'],
+          rows: f.rows.map(r => [r.name || '', won(r.amtN), r.priceN ? expr(r).replace(/\s*=.*$/, '') : '', r.note || '']).concat([['합계', won(f.total), '', '']]), num:[1]});
+      }
+    }
+    const w = fmtWhen(f.d1, f.d2, '', ''); if (w) S(`${T.when}: ${w}`);
+    if (f.place) S(`${T.where}: ${f.place}`);
+    stepsBlock();
+    extraOut();
+    tailBudget({noAmount:true});
+    return finish();
+  }
+  if (f.purpose) S(`목적: ${f.purpose}`);
+  if (f.name && !attOnly(f)) S(`${T.name}: ${f.name}`);
+  const when = fmtWhen(f.d1, f.d2, f.t1, f.t2);
+  if (when) S(`${T.when}: ${when}`);
+  if (f.place) S(`${T.where}: ${f.place}`);
+  if (f.type !== 'service' && (f.who || f.cnt)) S(`${T.who}: ${[f.who, f.cnt && !/\d+\s*명/.test(f.who) ? `${f.cnt}명` : ''].filter(Boolean).join(' ')}`);
+  // 구매·용역은 계약 방법을 비워 두면 금액으로 정함(「구매규정」 제9조, 실제 기안의 '※ 2천만원 이하 용역이므로 복수견적' 문구)
+  if (T.method && (f.method || f.total > 0)) S(`${T.method}: ${f.method || autoMethod(f)}`);
+  if (f.type === 'service') quoteBlock();
+  // 주요 내용: 한 줄이면 이어 쓰고, 여러 줄이면 1) 가)
+  if (cl.length === 1 && !/^\s*-/.test(cl[0])) S(`${T.content}: ${cl[0].trim().replace(/^[•·○▪]\s*/, '')}`);
+  else if (cl.length){
+    S(T.content); let i2 = 0, i3 = 0;
+    cl.forEach(l => {
+      if (/^\s*※/.test(l)) { P(3, '', l.trim()); return; }
+      if (/^\s*-/.test(l)) P(3, `${KO[i3++]})`, l.replace(/^\s*-\s*/, ''));
+      else { P(2, `${++i2})`, l.trim().replace(/^[•·○▪]\s*|^\d+[.)]\s*/, '')); i3 = 0; }
+    });
+  }
+  schedBlock('행사 일정(안)');
+  stepsBlock();
+  extraOut();
+  // 실제 시행 기안 순서: 소요예산(산출 표) → 사업비 구성 해당 항목 → 예산항목
+  tailBudget();
+  return finish();
+}
+
+function autoMethod(f){
+  // 공사는 '3,000만 원 이하의 시설공사 수의계약'(실제 공사 기안의 구매규정 제9조 인용), 입찰은 '나라장터 전자공개입찰(총액견적, 최저가업체 낙찰)'(실제 장비 입찰 기안)
+  const lim = f.type === 'purchase' ? 10000000 : f.type === 'works' ? 30000000 : 20000000;
+  const kind = f.type === 'purchase' ? '물품' : f.type === 'works' ? '시설공사' : '용역';
+  if (f.total <= 500000) return '1인 견적에 의한 수의계약(「구매규정」 제9조제1항제2호)';
+  if (f.total <= lim) return `2인 이상 견적에 의한 수의계약(${won(lim / 10000)}만 원 이하 ${kind}, 「구매규정」 제9조제1항)`;
+  return `나라장터 전자공개입찰(총액견적, 최저가업체 낙찰 / ${won(lim / 10000)}만 원 초과 ${kind}, 구매 담당 부서에 입찰 의뢰)`;
+}
+
+// 인사말: 다른 대학이면 '귀 대학의…'(뉴스레터 대외 배포 사례), 그 밖의 외부 기관은 '귀 기관의…', 교내는 '귀 부서의 협조에…'
+function greetText(ext, recv){
+  if (!ext) return '귀 부서의 협조에 감사드립니다.';
+  return /대학교?\s*(?:총장|장)|대학교|수신자참조|대학(?=[,\s]|$)/.test(String(recv || '')) && !/초등학교|중학교|고등학교/.test(String(recv || ''))
+    ? '귀 대학의 무궁한 발전을 기원합니다.' : '귀 기관의 무궁한 발전을 기원합니다.';
+}
+
+// '첫 문장(번호 없음) → 1. 2. 3.' 방식(교수초빙 일정·회의 개최·가이드북 제작 등 실제 기안에서 흔함)
+// 관련 문서·인사말이 있으면 1항이 필요하므로 기본 방식 유지
+const MK = [n => `${n}.`, n => `${KO[n - 1]}.`, n => `${n})`, n => `${KO[n - 1]})`, n => `(${n})`, n => `(${KO[n - 1]})`];
+function mkOrd(mk){
+  const m = /^\(?([0-9]+|[가-하])[.)]?\)?$/.exec(mk || '');
+  if (!m) return 0;
+  return /\d/.test(m[1]) ? +m[1] : KO.indexOf(m[1]) + 1;
+}
+function flatten(f, B){
+  // 자동: 첫 문장 하나로 시작하면 번호 없이, 관련 근거·인사말·배경이 있으면 1. 2.
+  const greetOn = f.greet && (/^(coop|notice)$/.test(f.type) || f.ext);
+  const mode = f.layout === 'auto' ? (f.rel.length || greetOn || f.bg ? 'nested' : 'flat') : f.layout;
+  if (mode !== 'flat' || f.rel.length || greetOn || f.bg) return B;
+  const first = B.findIndex(b => b.k === 'p' && b.lv === 0 && b.mk);
+  if (first < 0) return B;
+  let top = 0;
+  return B.map((b, i) => {
+    if (i === first) return {...b, mk:''};                                  // 첫 문장: 번호 없음
+    if (b.k === 'p' && b.lv === 0 && b.mk) return {...b, mk: MK[0](++top)};  // 마지막 항목(맺음) 등은 이어서 번호
+    if (b.k === 'p' && b.lv >= 1){
+      const lv = b.lv - 1, k = mkOrd(b.mk);
+      if (lv === 0 && b.mk) top = Math.max(top, k);
+      return {...b, lv, mk: b.mk ? MK[lv](k) : ''};
+    }
+    if ((b.k === 'grid' || b.k === 'table') && b.lv >= 1) return {...b, lv: b.lv - 1};
+    return b;
+  });
+}
+
+/* ---------- 미리보기 그리기 ---------- */
+const ADDR = {
+  seoul: '우 02450  서울특별시 동대문구 이문로 107  /  www.hufs.ac.kr',
+  global: '우 17035  경기도 용인시 처인구 모현읍 외대로 81  /  www.hufs.ac.kr',
+};
+function pHtml(lv, mk, text){
+  if (!mk) return `<p class="b" data-lv="${lv}" style="padding-left:${lv}em">${esc(text)}</p>`;
+  const mw = txtW(mk) + 0.5;
+  return `<p class="b" data-lv="${lv}" style="padding-left:${lv + mw}em;text-indent:-${mw}em">${esc(mk)} ${esc(text)}</p>`;
+}
+function render(){
+  const f = collect(), B = flatten(f, buildModel(f));
+  // '끝.' 표시: 붙임 끝 > 표로 끝나면 표 아래 왼쪽 두 칸 > 마지막 문장 뒤 두 칸
+  const last = B[B.length - 1];
+  if (last.k === 'att') last.items[last.items.length - 1] += '  끝.';
+  else if (last.k === 'table' || last.k === 'grid') B.push({k:'p', lv:0, mk:'', text:'  끝.'});
+  else last.text += '  끝.';
+  let h = '';
+  const GAP = '<p class="b gap" data-lv="0">&nbsp;</p>';
+  B.forEach((b, bi) => {
+    const nx = B[bi + 1];
+    if (b.k === 'att') h += GAP;                                    // 붙임 위 한 줄
+    if (b.k === 'p') h += pHtml(b.lv, b.mk, b.text);
+    else if (b.k === 'table'){
+      const ml = b.lv + 1.5;
+      const smT = b.rows.length > 12 || b.rows.some(r => (expr(r) + (r.name || '') + (r.note || '')).length > 45);
+      h += `<table class="bt${smT ? ' sm' : ''}" data-lv="${b.lv + 1}" style="margin-left:${ml}em;width:calc(100% - ${ml}em)"><thead><tr><th style="white-space:nowrap">연번</th><th style="white-space:nowrap">구분</th><th>산출 내용</th><th>금액(원)</th><th>비고</th></tr></thead><tbody>`
+        + b.rows.map((r, i) => `<tr><td class="c">${i + 1}</td><td class="c">${esc(r.name)}</td><td class="c">${esc(expr(r).replace(/=[\d,]+원$/, ''))}</td><td class="n">${won(r.amtN)}</td><td class="c">${esc(r.note)}</td></tr>`).join('')
+        + `<tr class="sum"><td class="c" colspan="3">합계</td><td class="n">${won(b.total)}</td><td></td></tr></tbody></table>`;
+    } else if (b.k === 'grid'){
+      const ml = b.lv + 1.5;
+      // 4글자 이하 짧은 칸(영역·연번 등)은 글자가 세로로 꺾이지 않게
+      // 머리칸은 '사업내용 / (사업코드)'처럼 두 줄로(가독성), 4글자 이하는 꺾이지 않게
+      const cell = (v, i, tag = 'td') => { const rs = v && typeof v === 'object' ? v.rs : 0; if (v && typeof v === 'object') v = v.v;
+        return `<${tag}${rs > 1 ? ` rowspan="${rs}"` : ''}${tag === 'td' ? ` class="${b.num.includes(i) ? 'n' : 'c'}"` : ''}${String(v).length <= 4 ? ' style="white-space:nowrap"' : ''}>${esc(v).replace(/\n/g, '<br>')}</${tag}>`; };
+      const smG = b.small || b.head.length >= 7 || b.rows.length > 12 || b.rows.some(r => Array.isArray(r) && r.some(v => String(v).length > 40));
+      h += `<table class="bt${smG ? ' sm' : ''}" data-lv="${b.lv + 1}" style="margin-left:${ml}em;width:calc(100% - ${ml}em)"><thead><tr>${b.head.map(x => cell(x, 0, 'th')).join('')}</tr></thead><tbody>`
+        + b.rows.map(r => r.span != null ? `<tr><td colspan="${b.head.length}" style="font-weight:bold;background:#f6f6f6">${esc(r.span)}</td></tr>` : `<tr>${r.map((v, i) => v === null ? '' : cell(v, i)).join('')}</tr>`).join('')
+        + (b.sum ? `<tr class="sum"><td class="c" colspan="6">${esc(b.sum[0])}</td><td class="n">${esc(b.sum[6])}</td><td></td></tr>` : '')
+        + `</tbody></table>`;
+    } else if (b.k === 'att'){
+      const one = b.items.length === 1;
+      b.items.forEach((t, i) => {
+        const mk = one ? '' : `${i + 1}. `;
+        h += i === 0
+          ? `<p class="b att" data-lv="0" style="padding-left:${3 + txtW(mk)}em;text-indent:-${3 + txtW(mk)}em">붙임  ${esc(mk + t)}</p>`
+          : `<p class="b att" data-lv="0" style="padding-left:${3 + txtW(mk)}em;text-indent:-${txtW(mk)}em">${esc(mk + t)}</p>`;
+      });
+    }
+    if (b.k === 'p' && b.lv === 0 && b.mk && /다\.(?:\s*끝\.)?\s*$/.test(b.text) && nx && nx.lv >= 1 && nx.k !== 'att') h += GAP;
+    else if (b.k === 'p' && b.lv === 0 && !b.mk && /다\.\s*$/.test(b.text) && nx && nx.k === 'p' && nx.lv === 0 && nx.mk) h += GAP;   // 번호 없는 첫 문장 → '1.' 사이   // '1.'과 '가.' 사이 한 줄
+  });
+  const title = f.title || autoTitle(f);
+  $('page').innerHTML =
+    `<div class="org">한국외국어대학교</div>
+     <div class="hd"><p><span class="lb">수신</span> ${esc(f.recvList.length > 1 ? '수신자참조' : f.recv)}</p><p><span class="lb">(경유)</span></p>
+       <p class="tt"><span class="lb">제목</span> ${esc(title)}</p></div>
+     <div class="bd">${h}</div>
+     ${f.ext ? '<p class="sender">한국외국어대학교 총장</p>' : ''}
+     <div class="ap" contenteditable="false">
+       <p><span class="lb">기안자</span>              <span class="lb">검토자</span>              <span class="lb">결재권자</span></p>
+       ${f.recvList.length > 1 ? `<p><span class="lb">수신자</span> ${esc(f.recvList.join(', '))}</p>` : ''}
+       <p><span class="lb">협조자</span></p>
+       <p><span class="lb">시행</span> ${esc(f.dept || '처리과명')}-일련번호(    .   .   .)      <span class="lb">접수</span> 처리과명-일련번호(    .   .   .)</p>
+       <p>${esc(ADDR[f.campus] || ADDR.seoul)}</p>
+       <p>전화번호 (    )      팩스번호 (    )      /  이메일        /  공개 구분</p>
+     </div>`;
+  selCell = null; updTblTools();
+  $('title').placeholder = '자동: ' + autoTitle(f);
+  $('totalView').textContent = f.rows.length ? `합계 금${won(f.sum)}원(금${hanAmt(f.sum)}원)` : '';
+  setDirty(false);
+}
+
+/* ---------- 작성 점검 ---------- */
+function checks(f){
+  const out = [], add = (lv, msg, basis) => out.push({lv, msg, basis});
+  const tag = {ok:'적합', warn:'확인', err:'초과', info:'안내'};
+  if (!f.name) add('warn', `${TYPES[f.type].name}${josa(TYPES[f.type].name, '을', '를')} 적어 주세요.`);
+  if (f.type === 'coop' && f.d1 && !/해당\s*사항\s*없|변동\s*사항\s*없|제출\s*불요/.test(f.content + f.extra)) add('info', "회신 요청 공문은 '※ 해당 사항이 없는 경우 \"해당 사항 없음\"으로 회신' 같은 안내를 넣는 경우가 많습니다(추가 항목에 적으세요).");
+  if (f.type === 'pay' && f.atts.some(a => /명단|대상자|추천서/.test(a.name))) add('info', '지급 명단·추천서 붙임에는 이름·학번·계좌 같은 개인정보가 들어갑니다. 그룹웨어 공개 구분을 비공개(또는 부분공개)로 하세요.');
+  if (f.type === 'works' && f.total > 0 && !f.warranty) add('info', "공사 계약은 하자보수보증(예: 계약금액의 5%, 준공일로부터 3년)을 적는 경우가 많습니다. ④ 아래 '하자보수보증'에서 고를 수 있습니다.");
+  if (/^(purchase|service|works)$/.test(f.type)){
+    const qs = f.quotes.split(/\r?\n/).map(l => /([\d,]{4,})/.exec(l)).filter(Boolean).map(m => num(m[1]));
+    if (qs.length){
+      const low = Math.min(...qs);
+      if (f.total && low !== f.total) add('warn', `최저 견적(${won(low)}원)과 ${f.type === 'purchase' ? '구매금액' : '소요예산'}(${won(f.total)}원)이 다릅니다. 부가가치세 포함 여부와 금액을 확인하세요.`);
+      if (f.total > 500000 && qs.length < 2) add('warn', '50만 원을 넘으면 2인 이상 견적이 필요합니다(「구매규정」 제9조제1항).');
+    } else if (f.total > 500000) add('info', "비교견적 칸에 업체별 견적 금액을 적으면 '선정방법: 비교견적에 의한 최저가업체 선정' 표가 들어갑니다.");
+    if (f.type === 'purchase' && !f.place) add('info', '납품 장소를 적어 주세요(예: 본관 303호 교육혁신원).');
+  }
+  if (f.type === 'research'){
+    if (!f.team.trim()) add('warn', '연구참여진(연구책임자·공동연구원·연구보조원)을 적어 주세요.');
+    if (!f.d2) add('warn', '연구기간의 종료일을 적어 주세요(시작일~종료일).');
+    if (!f.atts.some(a => /연구\s*계획서|지원\s*신청서/.test(a.name))) add('info', "정책연구 시행 기안에는 '연구비 지원신청서(연구계획서, 연구비 실행예산서 포함)'를 붙입니다.");
+  }
+  if (f.type === 'report' && /연구/.test(f.name) && !f.atts.some(a => /연구\s*결과\s*보고서/.test(a.name))) add('info', "연구 결과보고에는 '연구계획서'와 '연구결과보고서'를 붙입니다.");
+  if (f.type === 'support'){
+    if (!f.who) add('warn', '지원 대상을 적어 주세요(예: 2026학년도 2학기 개설 강좌, 전공 CQI 완료 학과).');
+    if (!f.d1) add('warn', '신청 기간(마감일)을 적어 주세요.');
+    const tot = f.crit.split(/\r?\n/).reduce((a, l) => { const m = /[:：]\s*(\d{1,3})/.exec(l); return a + (m ? +m[1] : 0); }, 0);
+    if (f.crit.trim() && tot !== 100) add('warn', `심사 기준 배점 합계가 ${tot}점입니다. 100점이 맞는지 확인하세요.`);
+    if (!f.crit.trim()) add('info', '선정 심사가 있으면 심사 기준과 배점을 적으세요(실제 기안: 정합성 35·집행 계획 35·기대성과 30, 60점 미만 선정 불가 등).');
+    if (!f.steps.trim()) add('info', '신청 → 심사 → 지원금 확정 → 결과보고·정산 일정을 추진 일정에 적으면 표로 들어갑니다.');
+  }
+  if (f.ext){
+    if (!$('recv').value.trim() || $('recv').value.trim() === '내부결재') add('warn', "외부 기관 시행문은 수신에 기관장(담당 부서장)을 적습니다. 예) ○○구청장(교육정책과장)");
+    if (f.prefix && f.prefix !== '[한국외국어대학교]') add('info', "외부 기관에 보낼 때는 제목 머리말을 '[한국외국어대학교]'로 쓰는 경우가 많습니다.");
+  }
+  if (f.type === 'notice'){
+    if (!$('recv').value.trim() || $('recv').value.trim() === '내부결재') add('warn', '안내문은 수신에 안내할 부서를 적습니다. 여러 곳이면 쉼표로 나눠 적으세요(수신자참조).');
+    if (!f.content.trim() && !f.d1) add('warn', '언제·무엇을 안내하는지 일시와 세부 내용을 적어 주세요.');
+    if (f.ask.trim() && f.style !== 'polite') add('info', "협조 사항이 있으면 끝맺음을 결재 요청형('…안내하오니 협조하여 주시기 바랍니다')으로 쓰는 경우가 많습니다.");
+    if (!/문의/.test(f.extra)) add('info', "'문의: ○○팀(내선 ○○○○)'을 추가 항목에 적으면 받는 부서가 연락하기 쉽습니다.");
+  }
+  if (f.type === 'coop'){
+    if (!/문의/.test(f.extra)) add('info', "'문의: ○○팀(내선 ○○○○)'을 추가 항목에 적으면 받는 부서가 연락하기 쉽습니다.");
+    if (!$('recv').value.trim() || $('recv').value.trim() === '내부결재') add('warn', '협조문은 수신에 협조할 부서(기관)장을 적습니다. 예) 교무처장(교무행정팀장)');
+    if (!f.content.trim()) add('warn', '무엇을 협조해 달라는지 요청 사항을 적어 주세요.');
+    if (!f.purpose) add('warn', '왜 협조가 필요한지 요청 사유를 적어 주세요.');
+    if (!f.d1) add('info', '회신·처리가 필요하면 협조 기한을 적으세요.');
+  }
+  if (!/^(general|coop|external|purchase|report)$/.test(f.type) && !f.d1) add('warn', `${TYPES[f.type].when}${josa(TYPES[f.type].when, '을', '를')} 적어 주세요.`);
+  const a = ymd(f.d1), b = ymd(f.d2);
+  if (a && b && f.d2 < f.d1) add('err', '종료일이 시작일보다 빠릅니다.');
+  if (f.t1 && f.t2 && (!f.d2 || f.d2 === f.d1) && f.t2 <= f.t1) add('err', '종료 시각이 시작 시각보다 빠르거나 같습니다.');
+  const today = new Date().toISOString().slice(0, 10);
+  if (f.d1 && f.d1 < today && f.type !== 'report') add('info', '일시가 오늘보다 앞섭니다. 사후 기안이 아닌지 확인하세요.');
+  if (f.title && /에\s*(관한|대한)\s*(일|건)\s*$/.test(f.title)) add('warn', "제목을 '~에 관한 일'로 끝내지 말고 내용을 알 수 있게 쓰세요.", '공문서 표본 — 제목');
+  // 1인 단가 기준(지침 38쪽)
+  const people = f.cnt;
+  for (const r of f.rows){
+    const n = r.name;
+    let unit = r.priceN, per = '';
+    if (!unit && people && r.amtN) { unit = r.amtN / people; per = ` (금액÷${people}명)`; }
+    if (/식대|식비|식사|도시락|중식|석식|조식/.test(n) && unit){
+      if (unit > 30000) add('err', `${n} 1인 ${won(unit)}원${per} — 식사 1인 25,000원(연속 진행 시 30,000원) 이내`, '집행지침 38쪽');
+      else if (unit > 25000) add('warn', `${n} 1인 ${won(unit)}원${per} — 식사 기준 25,000원 초과. 연속 진행(식사·다과를 이어서 하는 경우)일 때만 30,000원까지 가능합니다.`, '집행지침 38쪽');
+      else add('ok', `${n} 1인 ${won(unit)}원${per} — 식사 기준(25,000원) 이내`, '집행지침 38쪽');
+    }
+    if (/다과|간식|음료|커피|티타임/.test(n) && unit){
+      if (unit > 10000) add('err', `${n} 1인 ${won(unit)}원${per} — 다과 1인 10,000원 이내`, '집행지침 38쪽');
+      else add('ok', `${n} 1인 ${won(unit)}원${per} — 다과 기준(10,000원) 이내`, '집행지침 38쪽');
+    }
+    if (/상금|시상금|포상금/.test(n) && r.priceN > 300000) add('info', `${n} 1건 ${won(r.priceN)}원 — 1등 1인 한도는 학과 30만·단과대 50만·학교 100만·외부 연계 200만 원입니다. 주관 단위를 확인하세요.`, '집행지침 37쪽');
+    if (/상금|시상금|포상금/.test(n)) add('info', '결과보고 때 심사 결과와 포상금 지급대장을 붙이세요.', '집행지침 37쪽');
+    if (/강사료|강의료|특강/.test(n)) add('info', '강사 유형(Ⅰ~Ⅳ)별 시간당 기준을 확인하고 강사 이력서를 준비하세요.', '집행지침 35쪽');
+    if (/기념품|상품/.test(n)) add('info', '결과보고 때 기념품·상품 지급대장이 필요합니다.', '집행지침 25쪽');
+  }
+  if (f.rows.length && f.totalIn && f.totalIn !== f.sum) add('err', `직접 입력한 총액(${won(f.totalIn)}원)과 산출 내용 합계(${won(f.sum)}원)가 다릅니다. 기안문에는 표 합계를 씁니다.`);
+  // 구매·용역 견적(구매규정 제9조)
+  if (/^(purchase|service|works)$/.test(f.type) && f.total){
+    const lim = f.type === 'purchase' ? 10000000 : f.type === 'works' ? 30000000 : 20000000, kind = f.type === 'purchase' ? '물품' : f.type === 'works' ? '시설공사' : '용역';
+    if (f.total <= 500000) add('ok', `추정가격 ${won(f.total)}원 — 50만 원 이하는 1인 견적 가능`, '구매규정 제9조제1항제2호');
+    else if (f.total <= lim) add('info', `추정가격 ${won(f.total)}원 — ${kind} ${won(lim / 10000)}만 원 이하: 2인 이상 견적에 의한 수의계약`, '구매규정 제9조제1항');
+    else add('warn', `추정가격 ${won(f.total)}원 — ${kind} ${won(lim / 10000)}만 원 초과: 입찰 대상인지 구매 담당 부서와 확인하세요.`, '구매규정 제5조·제9조');
+    if (f.total <= 1000000) add('info', '100만 원 이하는 부서에서 직접 구매할 수 있습니다.', '구매규정 제4조제6호');
+    if (f.total > 500000 && !f.atts.some(x => /견적/.test(x.name))) add('warn', "붙임에 '견적서'가 없습니다. 비교 견적서를 붙이세요.");
+  }
+  if (f.rows.some(r => /식대|식비|식사|도시락|다과|간식/.test(r.name) && !r.priceN) && !f.cnt) add('warn', '식비·다과가 있으면 참여 인원을 적어야 1인 기준을 판단할 수 있습니다.', '집행지침 38쪽');
+  if (f.total && !f.acct) add('info', '예산항목 표의 사업내용(사업코드)을 적어 주세요(예: [혁신]○○ 운영(A000-00-000000)).');
+  // 예산항목: 줄마다 청구 전 잔액 초과, 여러 줄이면 본건 청구액 합계 = 소요예산
+  f.accts.forEach((r, i) => {
+    const claim = r.claimN || (f.accts.length === 1 ? f.total : 0);
+    if (r.alloc && claim > r.allocN - r.claimedN) add('err', `예산항목 ${i + 1}줄: 본건 청구액(${won(claim)}원)이 청구 전 예산잔액(${won(r.allocN - r.claimedN)}원)보다 큽니다.`);
+  });
+  if (f.accts.length > 1){
+    const ts = f.accts.reduce((a, r) => a + r.claimN, 0);
+    if (f.total && ts !== f.total) add('warn', `예산항목 본건 청구액 합계(${won(ts)}원)와 소요예산(${won(f.total)}원)이 다릅니다.`);
+  }
+  if (f.innov && !f.biz.some(Boolean)) add('warn', "대학혁신지원사업 예산이라 '사업비 구성 해당 항목' 표를 넣었습니다. ④에서 영역·혁신전략·핵심과제·실행과제·비목을 채워 주세요.");
+  else if (f.total && !f.biz.some(Boolean)) add('info', "대학혁신지원사업 기안에는 '사업비 구성 해당 항목'(영역·혁신전략·핵심과제·실행과제·비목) 표를 넣는 경우가 많습니다. ④에서 펼쳐 적으세요.");
+  if (f.type === 'report'){
+    if (!f.rel.length) add('warn', '결과보고는 1항에 원래 시행 기안(관련 문서)을 적습니다.');
+    if (!f.sat) add('info', '프로그램 결과보고에는 만족도 조사 결과를 함께 적는 경우가 많습니다.');
+    if (!f.outcome.trim()) add('info', "'성과 및 향후 개선 사항'(환류 계획)을 적으세요.");
+    if (f.total && !f.atts.some(a => /지출\s*결의/.test(a.name))) add('info', '결과보고에는 지출결의서 사본을 붙이는 경우가 많습니다.');
+    if (/공사|시설|리모델링|교체/.test(f.name) && !f.atts.some(a => /준공|사진/.test(a.name))) add('info', '공사 결과보고에는 준공사진을 붙입니다.', '집행지침 25쪽');
+  }
+  if (!out.some(x => x.lv !== 'ok' && x.lv !== 'info')) add('ok', '날짜·시각·금액·붙임·끝 표기는 공문서 표본 기준으로 자동 작성되었습니다.', '공문서 표본(인사-1782)');
+  $('checks').innerHTML = out.map(x => `<li class="${x.lv}"><b>${tag[x.lv]}</b><span>${esc(x.msg)}${x.basis ? ` <span class="basis">— ${esc(x.basis)}</span>` : ''}</span></li>`).join('');
+  const cnt = k => out.filter(x => x.lv === k).length, e = cnt('err'), w = cnt('warn'), i = cnt('info');
+  const bd = $('chkBadge');
+  bd.textContent = e || w || i ? `점검 ${[e && `초과 ${e}`, w && `확인 ${w}`, i && `안내 ${i}`].filter(Boolean).join(' · ')}` : '점검 이상 없음';
+  bd.className = 'small ' + (e ? 'err' : w ? 'warn' : i ? 'info' : 'ok');
+}
+
+/* ---------- 개인정보 감지 ---------- */
+function piiCheck(f){
+  const t = [...document.querySelectorAll('.left input[type=text], .left textarea')].map(i => i.value).join('\n');
+  const found = [], notes = [];
+  if (/01[016789][-\s.]?\d{3,4}[-\s.]?\d{4}/.test(t)) found.push('휴대폰 번호');
+  if (/\d{6}[-\s]?[1-8]\d{6}/.test(t)) found.push('주민(외국인)등록번호');
+  if (/[\w.+-]+@[\w-]+\.[\w.]+/.test(t)) found.push('이메일');
+  if (/(?<!\d)20\d{7}(?!\d)/.test(t)) found.push('학번으로 보이는 9자리 숫자');
+  if (/생년월일|(?<!\d)(?:19[4-9]\d|200\d)\s*[.\-/년]\s*\d{1,2}\s*[.\-/월]\s*\d{1,2}/.test(t)) found.push('생년월일');
+  if (/\d{2,6}-\d{2,6}-\d{2,8}/.test(t.replace(/01[016789]-\d{3,4}-\d{4}/g, '')) && /계좌|은행/.test(t)) found.push('계좌번호');
+  if (found.length) notes.push(`개인정보로 보이는 내용이 있습니다(${found.join(', ')}). 기안문에 꼭 필요한지 확인하고, 필요 없으면 지우거나 가려 주세요.`);
+  // 보안: 붙임 이름에 '(비밀번호·암호: ○○○○)'를 적은 실제 사례 → 따로 알리기
+  if (/(?:비밀번호|암호)\s*[:：]?\s*\S{3,}|password\s*[:：]\s*\S+/i.test(t)) notes.push('비밀번호(암호)가 들어가 있습니다. 본문·붙임 이름에 쓰지 말고 메일이나 전화로 따로 알리세요.');
+  // 제목 끝 괄호의 사람 이름(실제 예: '전임교원 겸직에 관한 일(○○○)') — 제목은 문서 목록에 그대로 보임
+  f = f || collect();
+  const nm = /\(([가-힣]{2,4})\)\s*$/.exec(f.title || autoTitle(f));
+  if (nm && !/(수정|안|서울|글로벌|송도|양\s*캠퍼스|팀|처|원|센터|과|부|소|단|실|대학|학교|위원회|본부|추경|변경|재공고|예정|기간|협조|기념|결과|임시)$/.test(nm[1]))
+    notes.push(`제목 끝 괄호의 '${nm[1]}'이(가) 사람 이름이라면, 제목은 문서 목록에 그대로 보이므로 꼭 필요한지 확인하세요.`);
+  const el = $('pii');
+  el.className = 'pii' + (notes.length ? ' on' : '');
+  el.innerHTML = notes.map(esc).join('<br>');
+}
+
+/* ---------- 서술에서 항목 채우기 ---------- */
+// 직위(사람 수를 세고, 앞의 이름을 지우는 기준)
+const TITLE_RE = '(?:부총장|총장|처장|부원장|원장|센터장|본부장|단장|관장|부학장|학장|학부장|학과장|팀장|주임교수|연구교수|교수|과장|소장|부장|실장|위원장|이사장|국장|차장|대리|선생님|강사|대표|구청장|시장|도지사|교육감)';
+const NOT_NAME = /^(외부|내부|담당|관련|해당|소속|전체|우리|본교|학과|센터|대학|학부|신임|초빙|명예|공동|책임|객원|겸임|특임|부속|교내|교외)$/;
+// '홍길동 교무처장' → '교무처장' (개인정보 최소화: 대상에는 직위만 남김)
+const stripNames = s => String(s).replace(new RegExp(`(^|[\\s:：,(])([가-힣]{2,4})\\s+(?=(?:[가-힣A-Za-z·]+\\s)?[가-힣]*${TITLE_RE}(?![가-힣]))`, 'g'),
+  (m, pre, nm) => NOT_NAME.test(nm) ? m : pre);
+
+function amountsIn(s){
+  const out = [];
+  const re = /(\d[\d,]*(?:\.\d+)?)\s*(만\s*(?:(\d[\d,]*)\s*천\s*)?|천\s*)?원/g;
+  let m;
+  while ((m = re.exec(s))){
+    let v = num(m[1]);
+    if (m[2] && /^만/.test(m[2])) v = v * 10000 + (m[3] ? num(m[3]) * 1000 : 0);
+    else if (m[2]) v *= 1000;
+    out.push({v, i:m.index, end:m.index + m[0].length});
+  }
+  return out;
+}
+/* ===== 보고자료 파일 읽기 (브라우저 안에서만 처리) ===== */
+// ZIP(hwpx) 풀기: 중앙 디렉터리 → 각 파일 → deflate-raw 풀기
+async function unzipEntries(buf){
+  const dv = new DataView(buf), u8 = new Uint8Array(buf), dec = new TextDecoder('utf-8');
+  let eo = -1;
+  for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 66000); i--) if (dv.getUint32(i, true) === 0x06054b50){ eo = i; break; }
+  if (eo < 0) throw new Error('hwpx(압축) 형식이 아닙니다');
+  const n = dv.getUint16(eo + 10, true); let p = dv.getUint32(eo + 16, true); const out = {};
+  for (let k = 0; k < n && dv.getUint32(p, true) === 0x02014b50; k++){
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lo = dv.getUint32(p + 42, true);
+    const name = dec.decode(u8.subarray(p + 46, p + 46 + nl));
+    const start = lo + 30 + dv.getUint16(lo + 26, true) + dv.getUint16(lo + 28, true);
+    out[name] = { method, data: u8.subarray(start, start + csize) };
+    p += 46 + nl + xl + cl;
+  }
+  out.read = async name => {
+    const e = out[name]; if (!e) return '';
+    if (e.method === 0) return dec.decode(e.data);
+    if (typeof DecompressionStream === 'undefined') throw new Error('이 브라우저는 압축 풀기를 지원하지 않습니다(최신 크롬·엣지 사용)');
+    const s = new Blob([e.data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return dec.decode(await new Response(s).arrayBuffer());
+  };
+  return out;
+}
+// hwpx 본문(section*.xml) → 줄 글. 표는 행마다 '- 칸 칸 칸' 한 줄
+async function hwpxToText(buf){
+  const z = await unzipEntries(buf);
+  const secs = Object.keys(z).filter(k => /^Contents\/section\d+\.xml$/i.test(k))
+    .sort((a, b) => +a.match(/\d+/)[0] - +b.match(/\d+/)[0]);
+  if (!secs.length) throw new Error('한글 본문(section)을 찾지 못했습니다');
+  const lines = [];
+  const tText = t => [...t.childNodes].map(c => c.nodeType === 3 ? c.data : c.localName === 'tab' ? ' ' : c.localName === 'lineBreak' ? '\n' : (c.textContent || '')).join('');
+  const SKIP = new Set(['ctrl','pic','equation','secPr','linesegarray','header','footer','footNote','endNote']);
+  const paraText = (p, tbls) => {
+    let s = '';
+    (function w(n){ for (const c of n.children){
+      const l = c.localName;
+      if (l === 'tbl'){ tbls.push(c); continue; }
+      if (SKIP.has(l)) continue;
+      if (l === 't') s += tText(c);
+      else if (l === 'p'){ if (s && !s.endsWith('\n')) s += '\n'; w(c); }   // 글상자 속 문단은 줄 나눔
+      else w(c);
+    } })(p);
+    return s;
+  };
+  const cellText = tc => [...tc.getElementsByTagNameNS('*', 'p')].map(p => paraText(p, [])).join(' ').replace(/\s+/g, ' ').trim();
+  const doTable = tbl => {
+    for (const tr of [...tbl.children].filter(c => c.localName === 'tr')){
+      let cells = [...tr.children].filter(c => c.localName === 'tc').map(cellText).filter(Boolean);
+      if (cells.length > 1 && /^\d{1,2}$/.test(cells[0])) cells = cells.slice(1);   // 연번 칸 빼기
+      if (cells.length) lines.push('- ' + cells.join(' '));
+    }
+    lines.push('');
+  };
+  for (const name of secs){
+    const doc = new DOMParser().parseFromString(await z.read(name), 'application/xml');
+    for (const p of [...doc.documentElement.children].filter(c => c.localName === 'p')){
+      const tbls = []; const s = paraText(p, tbls);
+      if (s.trim() || !tbls.length) lines.push(s);
+      tbls.forEach(doTable);
+    }
+  }
+  return lines.join('\n');
+}
+// PDF → 줄 글 (pdf.js를 같은 폴더 lib에서 처음 한 번만 불러옴, 외부 전송 없음)
+function loadLocalScript(src){
+  return new Promise((ok, ng) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => ng(new Error(src + ' 파일이 없습니다(lib 폴더 확인)')); document.head.appendChild(s); });
+}
+async function pdfToText(buf){
+  if (!window.pdfjsLib){
+    await loadLocalScript('lib/pdf.worker.min.js');   // 먼저 불러 두면 file://에서도 별도 워커 없이 동작
+    await loadLocalScript('lib/pdf.min.js');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+  }
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buf), isEvalSupported: false }).promise;
+  const out = [];
+  for (let i = 1; i <= pdf.numPages; i++){
+    const tc = await (await pdf.getPage(i)).getTextContent();
+    let s = '';
+    for (const it of tc.items){ s += it.str || ''; if (it.hasEOL) s += '\n'; }
+    out.push(s);
+  }
+  return out.join('\n');
+}
+// 읽은 글 다듬기: 줄 끝 공백·연속 빈 줄·쪽 번호 줄 정리
+function cleanReportText(t){
+  return t.replace(/\r/g, '').replace(/[ 　]/g, ' ')
+    .split('\n').map(l => l.replace(/[ \t]+/g, ' ').trim())
+    .filter(l => !/^-?\s*\d{1,3}\s*-?$|^\d+\s*\/\s*\d+$/.test(l))
+    .join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/* ===== 보고자료(1. 가. 1) 구조) → 기안문용 요약 =====
+   돌려주는 값: null(구조 없는 글) 또는 {desc: 서술 칸에 넣을 짧은 글, set: parseDesc 뒤에 덮어쓸 값, skipped: 뺀 단락} */
+function reportToDesc(text, fileName){
+  // '1) 개회 2) 참석자 소개 3) …'처럼 한 줄에 이어 적은 번호 항목은 나눔(번호가 1씩 늘 때만)
+  const lines = [];
+  text.split('\n').map(s => s.trim()).filter(Boolean).forEach(l => {
+    const m = l.match(/^(\d{1,2})\)\s/);
+    if (!m){ lines.push(l); return; }
+    let n = +m[1], rest = l, cut;
+    while ((cut = rest.slice(3).search(new RegExp(`\\s${n + 1}\\)\\s`))) >= 0){ lines.push(rest.slice(0, cut + 3).trim()); rest = rest.slice(cut + 3).trim(); n++; }
+    lines.push(rest);
+  });
+  const lvOf = l => /^\d{1,2}\.\s+(?![\d.])/.test(l) ? 1 : /^[가-하]\.\s/.test(l) ? 2 : /^\d{1,2}\)\s/.test(l) ? 3 : /^(?:[가-하]\)|\(\d{1,2}\))\s/.test(l) ? 4 : 0;
+  const cover = [], roots = [], stack = [], atts = [];
+  let inAtt = false;
+  const addAtt = s => { s = s.replace(/^\d{1,2}\.\s*/, '').replace(/\s*끝\.?\s*$/, '').replace(/\s*(?:각\s*)?\d+\s*부\.?\s*$/, '').trim(); if (s) atts.push(s); };
+  for (const l of lines){
+    const am = l.match(/^(?:\d{1,2}\.\s*)?붙\s*임\s*[:：]?\s*(.*)$/);
+    if (am && !/^붙임\s*\d/.test(l)){ inAtt = true; addAtt(am[1]); if (/끝\.\s*$/.test(l)) break; continue; }
+    if (inAtt){ if (/^-?\s*붙임\s*\d/.test(l)) break; addAtt(l); if (/끝\.\s*$/.test(l)) break; continue; }
+    if (/^-?\s*붙임\s*\d/.test(l) && roots.length) break;          // 끝. 뒤 붙임 표지
+    const lv = lvOf(l);
+    if (!lv){
+      const cur = stack[stack.length - 1];
+      if (!cur){ cover.push(l.replace(/^-\s*/, '')); continue; }
+      // 번호 없이 이어지는 줄(줄바꿈된 명단 등)은 앞 항목에 붙이고, ※·*·표 행·<제목>은 참고로
+      if (!/^[-*※•▪○<&「]|^https?:/.test(l) && cur.kids.length === 0){ cur.text += ' ' + l; if (cur.val) cur.val += ' ' + l; }
+      else cur.notes.push(l);
+      continue;
+    }
+    const body = l.replace(/^(?:\d{1,2}\.|[가-하]\.|\d{1,2}\)|[가-하]\)|\(\d{1,2}\))\s*/, '');
+    const m = body.match(/^([^:：]{1,20}?)\s*[:：]\s*(.*)$/);
+    while (stack.length && stack[stack.length - 1].lv >= lv) stack.pop();
+    const parent = stack[stack.length - 1] || null;
+    const node = { lv, text: body, key: (m ? m[1] : body).trim(), val: m ? m[2].trim() : '', kids: [], notes: [], parent };
+    (parent ? parent.kids : roots).push(node); stack.push(node);
+    if (/끝\.\s*$/.test(l)) break;
+  }
+  if (roots.length < 2) return null;                                  // 번호 구조가 없으면 기존 방식
+  const all = []; (function w(ns){ ns.forEach(n => { all.push(n); w(n.kids); }); })(roots);
+  const find = (re, pool = all) => pool.find(n => re.test(n.key));
+  const used = new Set();
+  const clean = s => s.replace(/https?:\/\/\S+/g, '').replace(/[‘’“”]/g, '').replace(/\s*@\s*/g, ' / ').replace(/\s{2,}/g, ' ').trim();
+  const iso = s => { const m = s.match(/(\d{4})\s*[.\-]\s*(\d{1,2})\s*[.\-]\s*(\d{1,2})/); return m ? `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}` : ''; };
+
+  // 제목줄 → 핵심 주제·짧은 목적
+  let head = cover.find(c => !/^\d{4}\s*[.\-]/.test(c) && /[가-힣]{2}/.test(c) && c.length >= 6)
+    || String(fileName || '').replace(/\.[^.]+$/, '').replace(/^\[[^\]]*\]\s*/, '').replace(/_\d{3,8}$/, '').replace(/_/g, ' ');
+  const core = (head.includes(':') ? head.split(/[:：]/).slice(1).join(':') : head).trim();
+  const coreShort = core.replace(/\s*\(안\)\s*$/, '').replace(/\s*(?:보고서?|계획서?|제안서?|검토|결과)$/, '').trim();
+  const purposeFromHead = coreShort.replace(/\s*(?:업무\s*협약|MOU|협약)(?:\s*체결)?$/i, '').trim();
+
+  // 행사 단락: '일시·장소'를 가진 단락
+  const whenN = all.find(n => /일\s*시|장\s*소/.test(n.key) && n.val);
+  const ev = whenN ? whenN.parent : null;
+  let when = '', place = '';
+  all.filter(n => n.val && (/일\s*시|장\s*소/.test(n.key))).forEach(n => {
+    used.add(n);
+    if (/일\s*시/.test(n.key) && /장\s*소/.test(n.key)){ const p = n.val.split(/\s+\/\s+|\s*\/\s*(?=[가-힣])/); when = when || p[0]; place = place || (p.slice(1).join(' / ')); }
+    else if (/장\s*소/.test(n.key)) place = place || n.val; else when = when || n.val;
+  });
+  place = place.replace(/\(예정\)/, '').trim() + (/\(예정\)/.test(place) ? '(예정)' : '');
+
+  // 행사명: 단락 제목(예: MOU 체결식(안)) + 제목줄의 '○○-○○' 상대 기관
+  let name = '';
+  if (ev){
+    name = ev.key.replace(/\s*\(안\)\s*$/, '').trim();
+    const pair = core.match(/^(\S+[-–·]\S+)\s/);
+    if (pair && /^(?:MOU|업무\s*협약|협약)/i.test(name)) name = pair[1] + ' ' + name;
+    used.add(ev);
+  } else name = coreShort;
+  const purpose = purposeFromHead && purposeFromHead !== name ? purposeFromHead : (find(/목\s*적/)?.kids[0]?.text || find(/목\s*적/)?.val || '');
+
+  // 관련 근거
+  const relN = find(/관련\s*(?:근거|문서)?$|^근\s*거$/);
+  const rel = relN ? relN.kids.map(k => {
+    let t = clean(k.text).replace(/^\d{4}\s*\.\s*\d{1,2}\s*\.\s*\d{1,2}\.?\s*/, '').replace(/([가-힣A-Za-z]+)\s*\(이하\s*[^()]+\)(과|와|은|는|이|가|을|를)?/g, (m0, w, j) => w + (!j ? '' : /과|와/.test(j) ? josa(w, '과', '와') : /은|는/.test(j) ? josa(w, '은', '는') : /이|가/.test(j) ? josa(w, '이', '가') : josa(w, '을', '를')));
+    t = t.replace(/\s*\(([^()]+)\)\s*$/, '($1)').replace(/\s+\(/, '(');
+    return { no: '', date: iso(k.text), title: t };
+  }) : [];
+  if (relN) used.add(relN);
+
+  // 참석대상 → parseDesc가 이름을 빼고 읽도록 블록으로 넘김
+  const pool = ev ? ev.kids : all;
+  const whoN = find(/참\s*석|참\s*여|대\s*상|초\s*청/, pool);
+  const whoBlock = whoN ? (whoN.kids.length ? ['참석대상', ...whoN.kids.map((k, i) => `${i + 1}) ${k.text}`)] : [`참석대상: ${whoN.val}`]) : [];
+  if (whoN) used.add(whoN);
+
+  // 주요 내용: 행사 단락의 하위 묶음(협약 내용 등) + 식순은 한 줄로
+  const content = [], extra = [];
+  const ordN = find(/식\s*순|진행\s*순서|순\s*서|일\s*정\s*\(안\)/, pool);
+  (ev ? ev.kids : roots.filter(r => !used.has(r))).forEach(n => {
+    if (used.has(n) || n === ordN || /현\s*황|사\s*례|참\s*고|기대\s*효과/.test(n.key)) return;
+    if (n.kids.length){
+      content.push(clean(n.key + (n.val ? ': ' + n.val : '')).replace(/\s*\(안\)$/, ''));
+      n.kids.slice(0, 8).forEach(k => content.push('  - ' + clean(k.text)));
+    } else if (n.val) extra.push(`${n.key}: ${clean(n.val)}`);
+    else content.push(clean(n.text));
+    used.add(n);
+  });
+  // 식순은 표로(③ 행사 일정 칸에 한 줄씩) — 서술 칸에는 한 줄 요약
+  const sched = ordN ? ordN.kids.map(k => clean(k.text)).filter(Boolean) : [];
+  if (ordN) used.add(ordN);
+  const skipped = roots.filter(r => !used.has(r) && r !== ev).map(r => r.key.replace(/\s*\(안\)$/, ''));
+
+  // '오전 10시 차담회, 10시 30분 체결식'처럼 시각마다 일이 다르면 하나의 행사로 봄:
+  // 일시 = 첫 시각, 차담회 등은 식순 표에 넣고 비고에 시각
+  let t1 = null;
+  const segs = [...when.matchAll(/(오전|오후)?\s*(\d{1,2})\s*(?:시|:)\s*(?:(\d{1,2})\s*분?)?\s*([가-힣]{2,})/g)]
+    .map(m => { let h = +m[2]; if (m[1] === '오후' && h < 12) h += 12; return { hm: `${String(h).padStart(2, '0')}:${String(+(m[3] || 0)).padStart(2, '0')}`, label: m[4] }; })
+    .filter(s => !/^(부터|까지|이후|이전|예정)$/.test(s.label));
+  if (segs.length >= 2){
+    const key = (ev ? ev.key : name).replace(/\(안\)/, '');
+    const main = segs.find(s => key.includes(s.label) || /식$/.test(s.label)) || segs[segs.length - 1];
+    t1 = segs[0].hm;
+    const mi = segs.indexOf(main);
+    if (sched.length){
+      if (!sched[0].includes('/')) sched[0] += ` / ${main.hm}`;          // 본행사 첫 순서에 시작 시각
+      segs.slice(0, mi).reverse().forEach(s => sched.unshift(`${s.label} / ${s.hm}`));
+      segs.slice(mi + 1).forEach(s => sched.push(`${s.label} / ${s.hm}`));
+    } else segs.forEach(s => sched.push(`${s.label} / ${s.hm}`));
+    when = when.replace(/\s*(?:오전|오후)?\s*\d{1,2}\s*(?:시|:).*$/, '') + ` ${t1}`;
+  }
+  // 서술 칸에 보일 짧은 글
+  const subj = purpose ? `${purpose}${josa(purpose, '을', '를')} 위하여 ` : '';
+  const desc = [
+    `${subj}${name}${josa(name, '을', '를')} ${ev ? '실시하려고' : '추진하려고'} 합니다.`,
+    when && `일시: ${when}`, place && `장소: ${place}`,
+    ...whoBlock,
+    content.length ? '주요 내용' : '', ...content.map(c => c.startsWith('  - ') ? c : '- ' + c),
+    ...extra.map(x => '- ' + x),
+    sched.length ? '행사 식순(표): ' + sched.join(' → ') : '',
+    atts.length ? '붙임: ' + atts.join(', ') : ''
+  ].filter(Boolean).join('\n');
+
+  const set = { name, purpose, content: content.join('\n'), extra: extra.join('\n') };
+  if (t1){ set.t1 = t1; set.t2 = ''; }
+  if (place) set.place = place;
+  if (sched.length) set.sched = sched.join('\n');
+  if (rel.length) set.rel = rel;
+  if (atts.length) set.atts = atts;
+  if (ev){ set.type = 'event'; set.verb = '실시'; }
+  return { desc, set, skipped };
+}
+
+function parseDesc(t){
+  const r = {}; let filled = 0;
+  const set = (k, v) => { if (v != null && v !== '') { r[k] = v; filled++; } };
+  const year0 = new Date().getFullYear();
+  // 관련 문서의 생산일은 행사 날짜가 아니므로 빼고 읽음
+  const t0 = t;
+  t = t.replace(/[가-힣A-Za-z]+-\d+\s*\([^)]*\)\s*["“][^"”\n]*["”]?/g, ' ');
+  // 날짜: '-' 목록 줄(추진 일정·세부 일정의 날짜)은 빼고 본문 문장에서 읽음
+  const tD = t.split(/\r?\n/).filter(l => !/^\s*(?:[-•·▪◦*]|○(?=\s))/.test(l)).join('\n');
+  const dates = [];
+  const DRE = /(?:(20\d{2})\s*(?:년|[.\-/])\s*)?(\d{1,2})\s*(?:월|[.\-/])\s*(\d{1,2})\s*(?:일|\.)?/g;
+  let m;
+  while ((m = DRE.exec(tD))){
+    if (!m[1] && !/월/.test(m[0])) continue;             // '3.5' 같은 숫자 제외: 연도 없으면 '월' 필요
+    const mo = +m[2], d = +m[3]; if (mo < 1 || mo > 12 || d < 1 || d > 31) continue;
+    dates.push({y: m[1] ? +m[1] : year0, mo, d, i:m.index, end:m.index + m[0].length});
+  }
+  const iso = x => `${x.y}-${String(x.mo).padStart(2, '0')}-${String(x.d).padStart(2, '0')}`;
+  if (dates.length){
+    set('d1', iso(dates[0]));
+    const after = tD.slice(dates[0].end, dates[0].end + 40);
+    const e = /^\s*(?:\([^)]*\)\s*)?(?:부터|~|－|-)\s*(?:(\d{1,2})\s*월\s*)?(\d{1,2})\s*일/.exec(after);
+    if (dates[1] && dates[1].i - dates[0].end < 30 && /~|부터|－/.test(tD.slice(dates[0].end, dates[1].i))) set('d2', iso(dates[1]));
+    else if (e) set('d2', iso({y:dates[0].y, mo: e[1] ? +e[1] : dates[0].mo, d:+e[2]}));
+  }
+  // 시각
+  const times = [];
+  const TRE = /(오전|오후)?\s*(\d{1,2})\s*(?::\s*(\d{2})|시\s*(?:(\d{1,2})\s*분|(반))?)/g;
+  while ((m = TRE.exec(t))){
+    if (!/[:시]/.test(m[0])) continue;
+    if (t[m.index + m[0].length] === '간') continue;          // '2시간'은 시각이 아님
+    let h = +m[2]; const mi = m[3] ? +m[3] : m[4] ? +m[4] : m[5] ? 30 : 0;
+    if (h > 24 || mi > 59) continue;
+    times.push({h, mi, ap:m[1], i:m.index});
+  }
+  if (times.length){
+    const [a, b] = times;
+    if (a.ap === '오후' && a.h < 12) a.h += 12;
+    if (b){ if (b.ap === '오후' && b.h < 12) b.h += 12; else if (!b.ap && a.ap === '오후' && b.h < 12) b.h += 12; }
+    const hm = x => `${String(x.h).padStart(2, '0')}:${String(x.mi).padStart(2, '0')}`;
+    set('t1', hm(a));
+    if (b && b.i - a.i < 30) set('t2', hm(b));
+  }
+  // 항목명: 내용 형식
+  const lab = (re) => { const x = re.exec(t); return x ? x[1].trim().replace(/[.。]$/, '') : ''; };
+  const name = lab(/(?:사업명|행사명|회의명|용역명|구매명|품명|건명)\s*[:：]\s*([^\n]+)/);
+  // 첫 문장의 '…을 개최/운영…'
+  const vm = /([^.\n]*?)\s*(?:을|를)\s*(?:(?:다음|아래|붙임)(?:과|와)\s*같이\s*)?(운영|개최|추진|실시|진행|구매|구입|계약|시행|열|요청|안내|공유|제출|회신)/.exec(t);
+  let verb = vm ? vm[2] : '';
+  // '을/를' 없이 '○○ 실시 예정입니다', '○○ 개최할 예정' 같은 문장
+  const vm2 = !vm && /([^.\n]+?)\s+(실시|개최|운영|추진|진행|시행|체결)\s*(?:예정|하려고|하고자|할\s*예정|합니다|됩니다)/.exec(t);
+  if (!verb && vm2) verb = vm2[2];
+  if (name) set('name', name);
+  else if (vm || vm2){
+    let n = (vm || vm2)[1];
+    const cut = Math.max(...['에서 ', '까지 ', '부터 ', '에 ', '에게 ', ', ', '하여 ', '하고 ', '위해 ', '위해서 ', '위한 '].map(k => { const i = n.lastIndexOf(k); return i < 0 ? -1 : i + k.length; }));
+    if (cut > 0) n = n.slice(cut);
+    n = n.replace(DRE, '').replace(/\([일월화수목금토]\)/g, '').trim();
+    if (n.length >= 2 && n.length <= 60) set('name', n);
+  }
+  // 장소
+  let place = lab(/장\s*소\s*[:：]\s*([^\n,]+)/) || lab(/(?:납품\s*)?장소(?:는|은)\s*([^.\n]+?)(?:입니다|이며|이고|으로|로\s*합니다|$)/);
+  if (!place){
+    const dm = /([^.\n]+?)\s*(?:에|으로|로)\s*납품/.exec(t);
+    if (dm){ let p = dm[1]; const c = Math.max(...[', ', '씩 ', '까지 ', '에서 ', '하고 '].map(k => { const i = p.lastIndexOf(k); return i < 0 ? -1 : i + k.length; })); if (c > 0) p = p.slice(c); p = p.trim(); if (p.length >= 2 && p.length <= 40) place = p; }
+  }
+  if (!place){
+    const pm = /([^.\n]*?)\s*에서\s/.exec(t);
+    if (pm){
+      let p = pm[1];
+      const cut = Math.max(...['까지 ', '부터 ', ') ', '일 ', ', ', '분 ', '시 '].map(k => { const i = p.lastIndexOf(k); return i < 0 ? -1 : i + k.length; }));
+      if (cut > 0) p = p.slice(cut);
+      p = p.trim(); if (p.length >= 2 && p.length <= 40) place = p;
+    }
+  }
+  if (!place){
+    const rm = /([가-힣A-Za-z0-9]+(?:캠퍼스|관|홀|센터|동|학사|컴플렉스)(?:\s+[가-힣A-Za-z0-9]+){0,3}?\s*\d{2,4}호(?:\s*[가-힣A-Za-z]+(?:실|홀|룸))?)/.exec(t);
+    if (rm) place = rm[1].trim();
+  }
+  set('place', place);
+  // 대상·인원
+  let who = lab(/(?:대\s*상|참석\s*대상|참여\s*대상)\s*[:：]\s*([^\n]+)/) || lab(/대상은\s*([^.\n]+?)(?:입니다|이다|임)/), cnt = '';
+  const wm = /([^,.\n]*?)\s*(?:총\s*)?(\d+)\s*명\s*(?:을|를|이|가)?\s*(?:대상|참석|참여|참가)/.exec(t);
+  if (wm){ cnt = wm[2]; if (!who){ let w = wm[1]; const c = w.lastIndexOf('며 '); if (c >= 0) w = w.slice(c + 2); who = w.replace(/^\s*(?:으로|로)\s*/, '').trim(); } }
+  if (!cnt){ const cm = /(?:인원|참석자|참여자|참가자)\s*(?:\([^)]*\))?\s*[:：]?\s*(?:총\s*|약\s*)?(\d+)\s*명/.exec(t) || /(?:총|약)\s*(\d+)\s*명/.exec(t); if (cm) cnt = cm[1]; }
+  if (who) who = who.replace(/(\d+)\s*명$/, (s, d) => { if (!cnt) cnt = d; return ''; }).trim();
+  set('who', who); set('cnt', cnt);
+  // 목적
+  let purpose = lab(/목\s*적\s*[:：]\s*([^\n]+)/);
+  if (!purpose){
+    const pm = /([^.\n]*?)\s*(?:하기\s*)?위(?:해|하여|함)/.exec(t);
+    if (pm){ let p = pm[1]; const c = Math.max(p.lastIndexOf(', '), p.lastIndexOf('며 ')); if (c >= 0 && p.length - c > 8) p = p.slice(c + 2); p = p.replace(/(?:을|를)$/, '').trim(); if (p.length >= 4) purpose = p; }
+  }
+  if (!purpose){
+    const pm2 = /([^.\n]{3,80}?)(?:을|를)\s*(?:위한|목적으로)\s/.exec(t);
+    if (pm2){
+      let p = pm2[1];
+      const c = Math.max(...['에서 ', ', ', '까지 ', '부터 ', '하여 '].map(k => { const i = p.lastIndexOf(k); return i < 0 ? -1 : i + k.length; }));
+      if (c > 0) p = p.slice(c);
+      p = p.replace(DRE, '').replace(/\([일월화수목금토]\)/g, '').trim();
+      if (p.length >= 3) purpose = p;
+    }
+  }
+  set('purpose', purpose);
+  set('acct', lab(/(?:예산\s*(?:항목|과목)|사업\s*코드)\s*[:：]\s*([^\n]+)/));
+  // 붙임
+  const am = /^\s*붙\s*임(?!\s*(?:과|와))\s*[:：]?\s*([^\n]+)/m.exec(t);
+  if (am){
+    const atts = am[1].split(/\s*[,、](?![^()]*\))\s*|\s{2,}/).map(s => s.replace(/^\s*\d+\.\s*/, '').replace(/\s*끝\.?\s*$/, '').replace(/\s*\d+\s*부\.?\s*$/, '').replace(/[.]\s*$/, '').trim()).filter(Boolean);
+    if (atts.length) set('atts', atts);
+  }
+  // 만족도
+  const sm = /만족도(?:\s*조사)?(?:\s*결과)?\s*[:：]?\s*([^\n]*\d[^\n]*)/.exec(t);
+  if (sm) set('sat', sm[1].trim().replace(/[.。]$/, '').replace(/입니다$|이었습니다$|였습니다$|로 나타났습니다$/, '').trim());
+  // 관련 문서
+  const rel = [...t0.matchAll(/([가-힣A-Za-z]+-\d+)\s*\(\s*(20\d{2})\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})\s*\.?\s*\)\s*["“]?([^"”\n]*)["”]?/g)]
+    .map(x => ({no:x[1], date:`${x[2]}-${x[3].padStart(2, '0')}-${x[4].padStart(2, '0')}`, title:x[5].trim()}));
+  // 법령·규정 근거: '관련: 「○○법」 제○조(…)' 또는 '관련 근거' 아래 '- 물품관리규정 제7조'
+  t0.split(/\r?\n/).forEach(l => {
+    const m = /^\s*(?:관련(?:\s*근거)?\s*[:：]\s*|[-•·]\s*)(「[^」]+」\s*(?:제\s*\d+\s*조[^\n,]*|\[[^\]]+\])?|[가-힣·]+(?:법률|법|시행령|시행규칙|규정|규칙|세칙)\s*제\s*\d+\s*조[^\n,]*)/.exec(l);
+    if (m && !rel.some(r => r.title === m[1].trim())) rel.push({no:'', date:'', title:m[1].trim()});
+  });
+  if (rel.length) set('rel', rel);
+  // 예산·주요 내용·추가 항목
+  const rows = [], content = [], extra = [], outcome = [];
+  let mode = 'none';   // none: 제목 없음(목록은 내용, 금액 줄은 예산)
+  const ask = [], sched = [], crit = [], steps = [], team = [], quotes = [], whoL = [];
+  const WHO_HEAD = /참석\s*(?:대상|자|인원)|참여\s*(?:대상|자)|초청\s*대상|참가\s*대상|^\s*대\s*상\s*(?:\(|$)/;
+  const body = t.replace(/^\s*붙\s*임(?!\s*(?:과|와))[^\n]*/gm, '').replace(/(?:예산\s*(?:항목|과목)|사업\s*코드)\s*[:：][^\n]*/g, '');
+  for (const line of body.split(/\r?\n/)){
+    // '11:00~11:10 인사말 / 교육혁신원장' 같은 일정 줄
+    // 연구참여진 줄: '연구책임자: ○○○ 교수(○○학부)'
+    const tm = /^\s*(?:[-•·]\s*)?(연구책임자|책임연구원|공동연구원|연구보조원|연구원|자문위원)\s*[:：]\s*(.+)$/.exec(line);
+    if (tm){ team.push(`${tm[1]}: ${tm[2].trim()}`); continue; }
+    const sm2 = /^\s*[-•·]?\s*(\d{1,2}:\d{2})\s*[~∼\-–]\s*(\d{1,2}:\d{2})\s+(.+)$/.exec(line);
+    if (sm2){ sched.push(`${sm2[1]}~${sm2[2]} ${sm2[3].trim()}`); continue; }
+    // '※ 우천 시 순연' 같은 참고 줄은 지금 목록에 그대로 붙임
+    if (/^\s*※/.test(line)){ (mode === 'ask' ? ask : mode === 'crit' ? crit : mode === 'steps' ? steps : mode === 'outcome' ? outcome : content).push(line.trim()); continue; }
+    // 관련 근거 줄은 위에서 관련 문서로 읽었으므로 건너뜀
+    if (/^\s*(?:\d{1,2}[.)]\s*)?(?:관련(?:\s*근거)?\s*[:：]|[-•·]\s*「[^」]+」|[-•·]\s*[가-힣·]+(?:법률|법|시행령|시행규칙|규정|규칙|세칙)\s*제\s*\d+\s*조)/.test(line)) continue;
+    const isBullet = /^\s*(?:[-•·▪◦*]|○(?=\s)|\d{1,2}[.)](?=\s)|[가-하][.)](?=\s)|\(\d{1,2}\)(?=\s))\s*/.test(line);
+    const em = /^\s*(주관|주최|협력|운영 주체|후원|문의|기대\s*효과|추진\s*배경|구입\s*배경|사업\s*배경)\s*[:：]\s*(.+)$/.exec(line);
+    if (em){ extra.push(`${em[1]}: ${em[2].trim()}`); continue; }
+    // 제목 줄(짧은 줄)만 보고 목록이 어디에 속하는지 정함
+    const head = !isBullet && line.trim().length <= 30;
+    const whoHead = head && WHO_HEAD.test(line) && !/[:：]\s*\S/.test(line);
+    if (whoHead){ mode = 'who'; continue; }
+    // '기대효과'·'추진배경' 제목 아래 '-' 줄은 추가 항목 묶음으로(실제 기안 11건의 기대효과)
+    if (head && /^\s*(?:\d{1,2}[.)]\s*)?(?:기대\s*효과|추진\s*배경|구입\s*배경|사업\s*배경)\s*[:：]?\s*$/.test(line)){ mode = 'xb'; extra.push(line.trim().replace(/^\d{1,2}[.)]\s*/, '').replace(/\s*[:：]\s*$/, '')); continue; }
+    if (mode === 'xb' && isBullet){ extra.push('- ' + line.replace(/^\s*(?:[-•·▪◦*]|○(?=\s)|\d{1,2}[.)](?=\s)|[가-하][.)](?=\s)|\(\d{1,2}\)(?=\s))\s*/, '').trim()); continue; }
+    if (mode === 'xb' && !isBullet && line.trim()) mode = 'none';
+    if (mode === 'who' && line.trim() && !amountsIn(line).length && (isBullet || /[:：]/.test(line) || new RegExp(TITLE_RE).test(line))){ whoL.push(line.trim()); continue; }
+    if (head && /성과|개선\s*사항|향후|환류|운영\s*결과/.test(line) && !/만족도/.test(line)) mode = 'outcome';
+    else if (head && /비교\s*견적|견적\s*(?:현황|비교|업체)|업체\s*선정/.test(line)) mode = 'quotes';
+    else if (head && /^\s*(?:소요\s*)?예산|산출\s*(?:내용|내역|근거)|품명|구매\s*품목|구매\s*내역/.test(line)) mode = 'budget';
+    else if (head && /심사\s*기준|평가\s*기준|평가\s*지표|선정\s*기준/.test(line)) mode = 'crit';
+    else if (head && /추진\s*일정|제작\s*일정|운영\s*절차|진행\s*절차|사업\s*일정/.test(line)) mode = 'steps';
+    else if (head && /협조\s*사항|유의\s*사항|협조\s*요청\s*사항|부서\s*협조/.test(line)) mode = 'ask';
+    else if (head && /주요\s*내용|세부\s*내용|지원\s*내용|연구\s*내용|프로그램|일정|진행\s*내용|요청\s*사항|요청\s*내용/.test(line)) mode = 'content';
+    // 비교견적 제목 아래 '- 업체 금액' 줄
+    if (mode === 'quotes' && isBullet && amountsIn(line).length){ const a = amountsIn(line)[0]; quotes.push(`${line.slice(0, a.i).replace(/^\s*[-•·▪]\s*/, '').trim()} / ${won(a.v)}`); continue; }
+    // '지원 내용'·'심사 기준' 같은 제목 아래 '-' 줄은 금액이 있어도 글로 봄(예산 제목 아래이거나 제목이 없을 때만 예산 행)
+    if (!/원/.test(line) || !amountsIn(line).length || (isBullet && !/^(none|budget)$/.test(mode))){
+      if (isBullet) (mode === 'outcome' ? outcome : mode === 'ask' ? ask : mode === 'crit' ? crit : mode === 'steps' ? steps : content).push(line.replace(/^\s*(?:[-•·▪◦*]|○(?=\s)|\d{1,2}[.)](?=\s)|[가-하][.)](?=\s)|\(\d{1,2}\)(?=\s))\s*/, '').trim());
+      else { const cm = /^\s*(?:주요\s*)?내\s*용\s*[:：]\s*(.+)$/.exec(line); if (cm) content.push(cm[1].trim()); }
+      continue;
+    }
+    for (const piece of line.split(/,(?!\d{3})|;|그리고/)){
+      const am2 = amountsIn(piece); if (!am2.length) continue;
+      const a0 = am2[0];
+      let nm = piece.slice(0, a0.i).replace(/^\s*(?:[-•·▪◦*]|○(?=\s))\s*/, '');
+      const sb = Math.max(nm.lastIndexOf('. '), nm.lastIndexOf('다 '), nm.lastIndexOf('요 '), nm.lastIndexOf(': '));
+      if (sb >= 0) nm = nm.slice(sb + 2);                           // 앞 문장('…구매하려고 합니다.')은 버림
+      // 괄호 안 띄어쓰기('CPU 서버(AMD 라이젠9 9950X)')는 한 낱말로 봄
+      nm = (nm.trim().match(/[^\s(]*\([^)]*\)\S*|\S+/g) || []).filter(w => w && !/(은|는|:|：)$/.test(w) && !/^(예산|소요예산|비용|금액)$/.test(w)).slice(-3).join(' ');
+      // 'PC'처럼 짧은 이름이 사업명('연구실 PC 3대')에 있으면 사업명 쪽 이름으로
+      if (nm && !/\s/.test(nm) && r.name){
+        const ws = r.name.split(/\s+/), k = ws.findIndex(w => w === nm || w.startsWith(nm));
+        if (k > 0) nm = ws.slice(Math.max(0, k - 2), k + 1).join(' ').replace(/(?:을|를)$/, '');
+      }
+      const afterQty = /^\s*(?:[×xX*＊]\s*)?\d+\s*(?:명|인|개|회|대|식|부|팀|세트)/.test(piece.slice(a0.end));
+      if ((/^(총|합계|총액|계|금액|구매금액|예산|소요예산)$/.test(nm) && /총|합계|예산|소요|금액/.test(piece)) || (!nm && !afterQty)){ set('total', a0.v); continue; }
+      const rest = piece.slice(a0.end);
+      // 금액 바로 뒤의 수량(최대 2개: ×30명×2회)
+      const q = []; let rr = rest, mm;
+      const QRE = /^\s*(?:[×xX*＊]\s*)?(\d+)\s*(명|인|개|회|부|식|시간|일|박|권|대|장|세트|팀|건|매|EA|ea)/;
+      while (q.length < 2 && (mm = QRE.exec(rr))){ q.push([mm[1], mm[2]]); rr = rr.slice(mm[0].length); }
+      const row = {name: nm || '항목'};
+      if (q.length){ row.price = won(a0.v); row.q1 = q[0][0]; row.u1 = q[0][1]; if (q[1]){ row.q2 = q[1][0]; row.u2 = q[1][1]; } else { row.q2 = ''; } }
+      else { row.price = ''; row.q1 = ''; row.q2 = ''; row.amt = won(a0.v); }
+      rows.push(row);
+    }
+  }
+  const each = /(\d+)\s*(개|대|식|세트|EA|ea)\s*씩/.exec(t);
+  rows.forEach(row => {
+    if (!row.name || row.name === '항목') return;
+    const nmE = row.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const sp = new RegExp(nmE + '\\s*\\(([^)]{2,40})\\)').exec(t);
+    if (sp && !row.note) row.note = sp[1].trim();
+    if (!row.q1){
+      const qm = new RegExp(nmE + '(?:\\s*\\([^)]*\\))?\\s*(\\d+)\\s*(개|대|식|세트)').exec(t);
+      const q = qm ? [qm[1], qm[2]] : each ? [each[1], each[2]] : null;
+      if (q && num(row.amt)){ row.price = row.amt; row.amt = ''; row.q1 = q[0]; row.u1 = q[1]; row.q2 = ''; }
+    }
+  });
+  if (rows.length) set('rows', rows);
+  if (content.length) set('content', content.join('\n'));
+  if (/(인터넷|온라인)/.test(t) && /(구입|구매)/.test(t)) set('method', '인터넷 구입');
+  if (/비교\s*견적|최저가/.test(t) && !quotes.length && /(구입|구매)/.test(t)) extra.push(`선정방법: 비교견적에 의한 ${/(인터넷|온라인)/.test(t) ? '온라인 최저가 판매처' : '최저가업체'} 선정`);
+  if (extra.length) set('extra', extra.join('\n'));
+  if (outcome.length) set('outcome', outcome.join('\n'));
+  if (ask.length) set('ask', ask.join('\n'));
+  if (sched.length) set('sched', sched.join('\n'));
+  if (crit.length) set('crit', crit.join('\n'));
+  if (team.length) set('team', team.join('\n'));
+  // 대상 목록 → '우리대학(총장, 교무처장 …), 상대 기관(…)' (이름은 빼고 직위만), 인원은 직위 수
+  if (whoL.length){
+    const groups = whoL.map(l => {
+      const x = stripNames(l.replace(/^\s*(?:[-•·▪]|\d{1,2}[.)]|[가-하][.)]|\(\d{1,2}\))\s*/, ''));
+      const m = /^([^:：]{1,20})[:：]\s*(.+)$/.exec(x);
+      return m ? {g:m[1].trim(), list:m[2].trim()} : {g:'', list:x.trim()};
+    });
+    r.who = groups.map(o => o.g ? `${o.g}(${o.list})` : o.list).join(', ');
+    const items = groups.flatMap(o => o.list.split(/\s*(?:,|，|및)\s*/)).map(x => x.trim()).filter(Boolean);
+    const people = items.filter(x => new RegExp(TITLE_RE + '$').test(x) || /(학생|직원|연구원|위원)$/.test(x)).length;
+    const nums = groups.reduce((a, o) => a + [...o.list.matchAll(/(\d+)\s*명/g)].reduce((b, m) => b + +m[1], 0), 0);
+    if (!r.cnt && (people + nums)) r.cnt = String(people + nums);
+    filled++;
+  }
+  if (quotes.length) set('quotes', quotes.join('\n'));
+  if (steps.length) set('steps', steps.map(l => l.replace(/\s*[:：]\s*/, ' / ')).join('\n'));
+  // 배경 문장: '…하고 있습니다. 이에 …하고자 합니다.' → 앞 문장(들)
+  {
+    const sents = t.split(/\r?\n/).filter(l => !/^\s*(?:[-•·▪◦*]|\d{1,2}[.)]\s)/.test(l)).join(' ').split(/(?<=다\.)\s+/);
+    const k = sents.findIndex(x => /^이에[\s,]/.test(x.trim()));
+    if (k > 0) set('bg', sents.slice(0, k).join(' ').trim());
+  }
+  // 종류·동사
+  const nm0 = r.name || '';
+  // 결과보고 판단은 '-' 목록 줄(진행 순서의 '결과 보고' 등)을 빼고 본문 문장만 봄
+  const prose = t.split(/\r?\n/).filter(l => !/^\s*(?:[-•·▪◦*]|○(?=\s))/.test(l)).join('\n');
+  const isReport = /결과\s*보고(?:합니다|드립니다|하오니|를|입니다)|결과를\s*(?:(?:다음|아래)(?:과|와)\s*같이\s*)?보고|(?:실시|운영|진행|개최)(?:했|하였)/.test(prose);
+  const isCoop = !isReport && /협조(?:를|하여|해|\s*요청|\s*부탁)|요청(?:하려고|하고자|하오니|드립니다|합니다|할\s*예정)/.test(prose);
+  const isNotice = !isReport && !isCoop && /안내(?:하려고|하고자|합니다|드립니다|하오니)|알리(?:려고|고자)|알려\s*드|공유(?:하려고|하고자|합니다|드립니다)/.test(prose);
+  // 외부 기관(구청·교육청·학교·재단 등)에 보내는 글
+  const extM = /([가-힣○]+(?:구청|시청|도청|군청|교육청|교육지원청|초등학교|중학교|고등학교|재단|공단))(?:에|에게|으로|로)\s/.exec(prose);
+  const isExternal = !isReport && !!extM;
+  // 지원사업 공고: '○○ 지원사업을 시행', 공모·지원금·사업비 지원·선정 심사
+  // 정책연구: '○○ 연구를 추진(수행)', '정책연구', '연구과제' — 지원사업보다 먼저 봄('대학혁신지원사업비' 때문에)
+  const isResearch = !isReport && !isExternal && !isCoop && /연구\s*(?:를|을)?\s*(?:추진|수행|시행|진행)|정책\s*연구|연구\s*과제/.test(prose);
+  // '대학혁신지원사업(비)'이라는 말은 지원사업 판단에서 뺌(혁신 예산을 쓰는 공사·행사가 지원사업으로 잡히지 않게)
+  const proseS = prose.replace(/(?:\[\s*)?대학\s*혁신\s*지원\s*사업(?:비)?(?:\s*\])?/g, '');
+  const isSupport = !isResearch && !isReport && !isExternal && !isCoop && /지원\s*사업|공모전?\s*(?:을|를)?\s*(?:시행|실시)|사업비를?\s*지원|지원금을?\s*지급|선정\s*심사/.test(proseS) && /시행|공모|모집|신청/.test(proseS);
+  // 시설 공사(감리·설계 '용역'은 용역), 장학금·수당·사례비 지급, 서비스 구독(실제 클로드·힉스필드 구독 기안)
+  const isWorks = !isReport && !isCoop && !isNotice && /공사/.test(nm0 || prose) && !/용역/.test(nm0) && !/(구매|구입)$/.test(nm0);
+  const isPay = !isReport && !isSupport && !isCoop && /(장학금|수당|사례비|활동비|격려금|지원금|상금)[^.\n]{0,20}?지급/.test(prose);
+  const isSub = !isReport && !isCoop && /구독/.test(nm0 || prose);
+  if (isSub && !/구독/.test(verb)) verb = '구독';
+  let type = isReport ? 'report' : isExternal ? 'external' : isCoop ? 'coop' : isResearch ? 'research' : isSupport ? 'support' : isWorks ? 'works' : isPay ? 'pay' : isSub ? 'general' : isNotice ? 'notice' : /^(구매|구입)$/.test(verb) ? 'purchase' : verb === '계약' ? 'service'
+    : /^(제출|회신)$/.test(verb) ? 'general'
+    : /회의|위원회|간담회|협의회|자문/.test(nm0) ? 'meeting'
+    : /^(운영|개최|추진|실시|진행|열|시행)$/.test(verb) ? 'event'
+    : /구매|구입|납품/.test(t) ? 'purchase' : /용역|위탁/.test(t) ? 'service' : 'event';
+  r.type = type;
+  // '착공일로부터 9개월간'·'계약 체결일로부터 3개월' 같은 기간 글(실제 공사·용역 기안)
+  if (/^(works|service)$/.test(type) && !r.d1){
+    const pm = /((?:착공일|계약\s*체결일|착수일)로부터\s*[^.,\n]*?(?:개월간|일간|주간|년간|간|까지|개월))/.exec(t0);
+    if (pm) r.extra = [`${type === 'works' ? '공사기간' : '용역 기간'}: ${pm[1].trim()}`, r.extra].filter(Boolean).join('\n');
+  }
+  // 목적·사업명 앞의 재원 말('대학혁신지원사업으로', '혁신 사업비로')은 뺌 — 재원은 사업비 구성·예산항목 표로 드러남
+  const FUND = /^(?:\[?\s*대학\s*혁신\s*지원\s*사업\s*\]?(?:\s*예산|비)?|혁신\s*사업\s*(?:비|예산)|혁신사업비)\s*(?:으로|로|을\s*활용하여|를\s*활용하여)?\s+/;
+  if (r.purpose) r.purpose = r.purpose.replace(FUND, '');
+  if (r.name) r.name = r.name.replace(FUND, '');
+  // 온라인 진행: 장소가 없고 Zoom·비대면이면 진행 방식으로(실제 워크숍 '온라인 실시간(Zoom)')
+  if (/^(event|meeting|report)$/.test(type) && !r.place){
+    if (r.name) r.name = r.name.replace(/^(?:zoom|줌|온라인|비대면)\s*(?:으로|로)\s+/i, '');
+    if (/zoom|줌/i.test(t0)) r.place = '온라인 실시간(Zoom)';
+    else if (/비대면|온라인\s*(?:실시간|화상|으로\s*(?:진행|개최|실시))/.test(t0)) r.place = '온라인(비대면)';
+  }
+  // 지급·구독 건명: '…을 위해 ○○ 장학금을 지급', '○○ 서비스를 구독'의 목적어
+  if ((type === 'pay' || isSub) && !r.name){
+    const m = new RegExp(`([^.\\n]{2,60}?)(?:을|를)\\s*${type === 'pay' ? '지급' : '구독'}`).exec(prose);
+    if (m){ let n = m[1]; const c = Math.max(n.lastIndexOf('위해 '), n.lastIndexOf('위하여 '), n.lastIndexOf('위해서 '), n.lastIndexOf(', ')); if (c >= 0) n = n.slice(n.indexOf(' ', c) + 1); n = n.trim(); if (n.length >= 2) r.name = n; }
+  }
+  // 결과보고: '○○ 워크숍을 (2026년 10월 17일에) 실시하였습니다'의 목적어를 사업명으로(사용자 요청 2026-11-03)
+  if (type === 'report' && !r.name){
+    const m = /([^.\n]{2,80}?)(?:을|를)\s+(?:[^.\n]{0,40}?\s)?(?:실시|운영|진행|개최|추진|시행)(?:했|하였)/.exec(prose);
+    if (m){
+      let n = m[1];
+      const c = Math.max(...['위해 ', '위하여 ', '위해서 ', ', ', '에서 ', '관련하여 '].map(k => { const i = n.lastIndexOf(k); return i < 0 ? -1 : i + k.length; }));
+      if (c > 0) n = n.slice(c);
+      n = n.trim();
+      if (n.length >= 2 && !/^(?:이를|이것|위\s*사업|행사|프로그램)$/.test(n)) r.name = n;
+    }
+  }
+  // 결과보고 사업명 앞에 붙은 시기 말 빼기: '지난 10월', '2026년 10월 17일에', '금번' 등
+  if (type === 'report' && r.name){
+    const n = r.name.replace(/^(?:지난|금번|이번|올해|지난달)\s+/, '')
+      .replace(/^(?:\d{4}\s*년\s*)?\d{1,2}\s*월(?:\s*\d{1,2}\s*일)?(?:\([^)]*\))?(?:에는|에)?\s+/, '')
+      .replace(/^\d{4}\s*\.\s*\d{1,2}\s*\.\s*\d{1,2}\s*\.?(?:\([^)]*\))?(?:에는|에)?\s+/, '').trim();
+    if (n.length >= 2) r.name = n;
+  }
+  // 결과보고인데 사업명을 못 찾았으면 '○○ 결과를 …보고'의 앞부분을 사업명으로
+  if (type === 'report' && !r.name){
+    const nm = /([^.\n]+?)\s*(?:운영\s*|실시\s*|추진\s*)?결과를\s*(?:(?:다음|아래)(?:과|와)\s*같이\s*)?보고/.exec(prose);
+    if (nm){ let n = nm[1]; const c = Math.max(n.lastIndexOf('관련하여 '), n.lastIndexOf('관련, '), n.lastIndexOf(', ')); if (c >= 0) n = n.slice(n.indexOf(' ', c) + 1); n = n.trim(); if (n.length >= 2) r.name = n; }
+  }
+  if (verb === '구입' && type !== 'purchase') verb = '구매';
+  if (type === 'meeting' && /^(진행|열|실시)$/.test(verb)) verb = '개최';
+  if ((type === 'event' || type === 'report') && /^(개최|진행|열)$/.test(verb)) verb = '실시';      // 행사 건은 '실시'
+  r.verb = verb || TYPES[type].verb;
+  if (type === 'research'){
+    r.verb = '추진';
+    delete r.place; delete r.who; delete r.cnt;
+    const gm = /연구\s*수행\s*지침\s*[:：]\s*([^\n]+)/.exec(t0); if (gm) r.place = gm[1].trim();
+  }
+  if (type === 'support'){
+    r.verb = '시행';
+    // 신청 방법: '이메일로 신청(접수·제출)'
+    delete r.place;
+    const am = /([가-힣A-Za-z]+)(?:으로|로)\s*(?:신청|접수|제출)/.exec(prose); if (am) r.place = `${am[1]} 접수`;
+    const sm3 = /신청\s*방법\s*[:：]\s*([^\n]+)/.exec(t0); if (sm3) r.place = sm3[1].trim();
+  }
+  if (type === 'external'){
+    const o = extM[1];
+    r.recv = /(재단|공단)$/.test(o) ? `${o} 이사장` : `${o}장`;
+    if (!/^(요청|안내|시행|실시|운영|추진)$/.test(r.verb)) r.verb = /요청|협조|부탁/.test(prose) ? '요청' : '안내';
+    if (/요청|부탁/.test(prose) && !/안내(?:하려고|합니다|드립니다)/.test(prose)) r.verb = '요청';
+  }
+  if (type === 'notice'){
+    r.verb = '안내';
+    // 시행 동사가 잡혔으면 '…을 시행'의 대상이 안내 건명
+  }
+  if (type === 'coop' && ask.length){ r.content = [r.content, ...ask].filter(Boolean).join('\n'); delete r.ask; }
+  if (type === 'coop'){
+    // 받는 곳: '교무처에 … 요청' → 교무처장
+    const rm = /([가-힣]+(?:본부|위원회|센터|처|팀|원|단|실|과))(?:에|에게|으로|로)\s[^.\n]{0,45}?(?:협조|요청)/.exec(prose);
+    if (rm){ const o = rm[1]; r.recv = o + (/위원회$/.test(o) ? '' : '장'); if (/위원회$/.test(o)) r.recv = o.replace(/회$/, '장'); }
+    // 사유: '…위해'가 없으면 '…때문/에 따라'
+    if (!r.purpose){
+      const pm = /([^.\n]{4,80}?)\s*(?:하기\s*)?(?:때문(?:입니다|에)|에\s*따라|(?:하|이)므로|로\s*인해)/.exec(prose);
+      if (pm){ let p2 = pm[1]; const c = Math.max(p2.lastIndexOf(', '), p2.lastIndexOf('. ')); if (c >= 0) p2 = p2.slice(c + 2); r.purpose = p2.trim().replace(/(?:이|가)\s*필요$/, ' 필요'); filled++; }
+    }
+    // 장소 대신 회신 방법
+    delete r.place;
+    const hm = /회신\s*방법\s*[:：]\s*([^\n]+)/.exec(t0); if (hm) r.place = hm[1].trim();
+    if (!r.verb || r.verb !== '요청') r.verb = '요청';
+  }
+  return {r, filled};
+}
+function applyParsed(r){
+  $('type').value = r.type; applyType(false);
+  if (!VERBS[r.type]) $('verb').innerHTML = `<option value="${r.verb}">${r.verb}</option>`;      // 첫 문장이 정해진 종류
+  else if (![...$('verb').options].some(o => o.value === r.verb)) $('verb').add(new Option(r.verb, r.verb));
+  $('verb').value = r.verb;
+  autoRecv(r.type, r.recv); applyType(false);   // 자동으로 켠 외부 기관 설정을 화면에 반영
+  // 다시 채울 때 이전 서술의 값이 남지 않게 먼저 비움
+  for (const k of ['name','purpose','d1','d2','t1','t2','place','who','cnt','content','extra','totalIn','sat','outcome','ask','sched','crit','steps','team','quotes','method','bg']) $(k).value = r[k] != null ? r[k] : '';
+  if (r.total && !r.rows) $('totalIn').value = won(r.total);
+  $('budT').tBodies[0].innerHTML = ''; (r.rows || [{}]).forEach(addRow); if (r.rows && r.total) $('totalIn').value = won(r.total);
+  $('attT').tBodies[0].innerHTML = ''; (r.atts || ['']).forEach(n => addAtt({name:n}));
+  $('acctT').tBodies[0].innerHTML = ''; addAcct({code: r.acct || ''});
+  // 구매·용역은 붙임을 안 적었으면 '견적서 각 1부.'(실제 구입 기안 형식)
+  if (/^(purchase|service)$/.test(r.type) && !r.atts){ $('attT').tBodies[0].innerHTML = ''; addAtt({name:'견적서 각', cnt:'1'}); }
+  if (r.type === 'works' && !r.atts){ $('attT').tBodies[0].innerHTML = ''; WORKS_ATTS.forEach(n => addAtt({name:n})); }
+  $('relT').tBodies[0].innerHTML = ''; (r.rel || []).forEach(addRel);
+}
+
+/* ---------- 미리보기 직접 편집 ---------- */
+let dirty = false, savedRange = null;
+function setDirty(v){ dirty = v; $('dirty').classList.toggle('on', v); }
+function needCheck(f){
+  const has = {purpose:f.purpose, content:f.content.trim() || f.name, when:f.d1, place:f.place, who:f.type === 'research' ? f.team.trim() : f.who, cnt:f.cnt, acct:f.acct, basis:f.rows.length || f.total > 0};
+  const NEED = {purchase:{purpose:'구매 목적', basis:'품목·수량', place:'납품 장소', acct:'예산항목'}, research:{purpose:'연구 배경', content:'연구 내용', who:'연구참여진', when:'연구기간', acct:'예산항목'}, support:{purpose:'사업 목적', who:'지원 대상', content:'지원 내용', when:'신청 기간', acct:'예산항목'}, external:{purpose:'목적', content:'주요 내용', when:'일시', place:'장소', who:'대상'}, coop:{purpose:'요청 사유', content:'요청 사항', when:'협조 기한'}, notice:{purpose:'취지', content:'세부 내용', when:'일시(기간)', place:'장소', who:'대상'}};
+  const coop = !!NEED[f.type], LB = NEED[f.type] || {};
+  let n = 0, all = 0;
+  document.querySelectorAll('#need li').forEach(li => {
+    const k = li.dataset.k, b = li.querySelector('b');
+    if (!b.dataset.o) b.dataset.o = b.textContent;
+    const show = !coop || k in LB;
+    li.style.display = show ? '' : 'none';
+    b.textContent = coop && LB[k] ? LB[k] : b.dataset.o;
+    if (!show) return;
+    const ok = !!has[k]; li.classList.toggle('ok', ok); n += ok; all++;
+  });
+  $('needCnt').textContent = `(${n}/${all} 채움)`;
+}
+function refreshPanels(f){
+  const tyLabel = $('type').selectedOptions[0] ? $('type').selectedOptions[0].textContent : '';
+  const w = fmtWhen(f.d1, f.d2, f.t1, f.t2);
+  $('sum2').textContent = `— ${tyLabel} · 수신 ${f.recvList.length > 1 ? '수신자참조' : f.recv}`;
+  $('sum3').textContent = `— ${f.name || '(사업명 없음)'}${w ? ' · ' + w : ''}${f.place ? ' · ' + f.place : ''}`;
+  $('sum4').textContent = f.total > 0 ? `— 금${won(f.total)}원${f.rows.length ? ` · 산출 ${f.rows.length}줄` : ''}${f.acct ? ' · ' + f.acct : ''}` : '— 예산 없음';
+  $('sum5').textContent = `— 붙임 ${f.atts.length}건${f.closeOn ? ' · 맺음 항목 있음' : ''}`;
+  document.querySelectorAll('details.opt.auto').forEach(d => {
+    if ([...d.querySelectorAll('textarea, input')].some(i => i.value.trim())) d.open = true;
+  });
+  $('fmtSum').textContent = `(${[f.prefix || '머리말 없음', f.style === 'polite' ? '결재 요청형' : '간결형', f.layout === 'auto' ? '번호 자동' : f.layout === 'flat' ? '번호 1. 2. 3.' : '번호 1.→가.', f.ext ? '외부 시행문' : ''].filter(Boolean).join(' · ')})`;
+}
+function refresh(){ const f = collect(); refreshPanels(f); piiCheck(f); checks(f); needCheck(f); if (!dirty) render(); }
+document.addEventListener('selectionchange', () => {
+  const s = getSelection();
+  if (s.rangeCount && $('page').contains(s.anchorNode)){
+    savedRange = s.getRangeAt(0).cloneRange();
+    const el = s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement;
+    const pt = Math.round(parseFloat(getComputedStyle(el).fontSize) * 0.75);
+    if ($('selSize').querySelector(`option[value="${pt}"]`)) $('selSize').value = pt;
+  }
+});
+function restoreSel(){
+  if (!savedRange) return false;
+  const s = getSelection(); s.removeAllRanges(); s.addRange(savedRange);
+  return !savedRange.collapsed;
+}
+function sizeSel(pt){
+  if (!restoreSel()){ toast('미리보기에서 바꿀 글자를 먼저 드래그해 선택하세요'); return; }
+  document.execCommand('styleWithCSS', false, false);
+  document.execCommand('fontSize', false, '7');
+  $('page').querySelectorAll('font[size="7"]').forEach(f => {
+    const sp = document.createElement('span'); sp.style.fontSize = pt + 'pt'; sp.innerHTML = f.innerHTML;
+    sp.querySelectorAll('[style*="font-size"]').forEach(x => x.style.fontSize = '');   // 안쪽 크기 지정은 정리
+    f.replaceWith(sp);
+  });
+  const s = getSelection(); if (s.rangeCount) savedRange = s.getRangeAt(0).cloneRange();
+  $('selSize').value = pt; setDirty(true);
+}
+function selPt(){
+  if (!savedRange) return 12;
+  const n = savedRange.startContainer; const el = n.nodeType === 1 ? n : n.parentElement;
+  return Math.round(parseFloat(getComputedStyle(el).fontSize) * 0.75);
+}
+
+/* ---------- 미리보기 표 편집(합치기·나누기·행) ---------- */
+let selCell = null;
+// 표를 칸 격자로 펼침: grid[r][c] = 그 자리를 차지한 셀
+function tableGrid(tbl){
+  const rows = [...tbl.rows], grid = rows.map(() => []), pos = new Map();
+  rows.forEach((tr, r) => {
+    let c = 0;
+    [...tr.cells].forEach(td => {
+      while (grid[r][c]) c++;
+      pos.set(td, {r, c});
+      for (let i = 0; i < td.rowSpan; i++) for (let j = 0; j < td.colSpan; j++){ if (!grid[r + i]) grid[r + i] = []; grid[r + i][c + j] = td; }
+      c += td.colSpan;
+    });
+  });
+  return {rows, grid, pos, cols: Math.max(...grid.map(g => g.length))};
+}
+function pickCell(td){
+  document.querySelectorAll('.page .cellsel').forEach(x => x.classList.remove('cellsel'));
+  selCell = td && $('page').contains(td) ? td : null;
+  if (selCell) selCell.classList.add('cellsel');
+  updTblTools();
+}
+function updTblTools(){
+  const on = !!selCell;
+  document.querySelectorAll('#tblTools button').forEach(b => {
+    let ok = on;
+    if (on && b.dataset.tb === 'split') ok = selCell.colSpan > 1 || selCell.rowSpan > 1;
+    b.disabled = !ok;
+  });
+}
+const joinText = (a, b) => { const t = b.innerHTML.trim(); if (t && t !== '&nbsp;') a.innerHTML = a.innerHTML.trim() ? `${a.innerHTML}<br>${t}` : t; };
+function tblEdit(kind){
+  if (!selCell){ toast('미리보기 표에서 칸을 먼저 누르세요'); return; }
+  const tbl = selCell.closest('table'), G = tableGrid(tbl), {r, c} = G.pos.get(selCell), td = selCell;
+  if (kind === 'mergeR'){
+    const nx = G.grid[r][c + td.colSpan];
+    if (!nx || G.pos.get(nx).r !== r || nx.rowSpan !== td.rowSpan){ toast('오른쪽에 높이가 같은 칸이 없습니다'); return; }
+    td.colSpan += nx.colSpan; joinText(td, nx); nx.remove();
+  } else if (kind === 'mergeD'){
+    const dn = G.grid[r + td.rowSpan] && G.grid[r + td.rowSpan][c];
+    if (!dn || G.pos.get(dn).c !== c || dn.colSpan !== td.colSpan){ toast('아래에 너비가 같은 칸이 없습니다'); return; }
+    td.rowSpan += dn.rowSpan; joinText(td, dn); dn.remove();
+  } else if (kind === 'split'){
+    const rs = td.rowSpan, cs = td.colSpan;
+    if (rs === 1 && cs === 1){ toast('합쳐진 칸이 아닙니다'); return; }
+    const tag = td.tagName.toLowerCase(), mk = () => { const x = document.createElement(tag); x.className = td.className.replace('cellsel', '').trim(); x.innerHTML = '&nbsp;'; return x; };
+    td.rowSpan = 1; td.colSpan = 1;
+    for (let j = 1; j < cs; j++) td.after(mk());
+    // 아래 행: 같은 자리(c)에 cs칸씩 끼워 넣음
+    for (let i = 1; i < rs; i++){
+      const tr = G.rows[r + i]; if (!tr) break;
+      const after = [...tr.cells].find(x => G.pos.get(x).c > c);
+      for (let j = 0; j < cs; j++){ const x = mk(); after ? tr.insertBefore(x, after) : tr.append(x); }
+    }
+  } else if (kind === 'rowAdd'){
+    const tr = td.parentElement, nr = document.createElement('tr');
+    for (let j = 0; j < G.cols; j++){ const x = document.createElement('td'); x.className = 'c'; x.innerHTML = '&nbsp;'; nr.append(x); }
+    // 위 행에서 아래로 이어지는 칸이 있으면 그 자리는 비움(넓이 맞춤)
+    const rr = r + td.rowSpan - 1;
+    let skip = 0; (G.grid[rr] || []).forEach((x, j) => { const p = G.pos.get(x); if (p.r + x.rowSpan - 1 > rr && p.c === j) { x.rowSpan += 1; skip += x.colSpan; } });
+    for (let j = 0; j < skip; j++) nr.lastChild && nr.lastChild.remove();
+    G.rows[rr].after(nr);
+  } else if (kind === 'colAdd'){
+    // 선택한 칸의 오른쪽 끝(x) 다음에 열을 끼움. x를 걸쳐 넘어가는 합친 칸은 넓히기만 함
+    const x = c + td.colSpan - 1, done = new Set();
+    G.rows.forEach((tr, ri) => {
+      const at = G.grid[ri] && G.grid[ri][x]; if (!at) return;
+      const p = G.pos.get(at);
+      if (p.c + at.colSpan - 1 > x){ if (!done.has(at)){ at.colSpan += 1; done.add(at); } return; }
+      const nc = document.createElement(tr.cells[0] && tr.cells[0].tagName === 'TH' ? 'th' : 'td');
+      nc.className = 'c'; nc.innerHTML = '&nbsp;';
+      if (p.r === ri) at.after(nc);
+      else { const after = [...tr.cells].find(y => G.pos.get(y).c > x); after ? tr.insertBefore(nc, after) : tr.append(nc); }
+    });
+  } else if (kind === 'colDel'){
+    if (G.cols <= 1){ toast('마지막 열은 지울 수 없습니다'); return; }
+    const done = new Set();
+    G.rows.forEach((tr, ri) => {
+      const at = G.grid[ri] && G.grid[ri][c]; if (!at || done.has(at)) return;
+      done.add(at);
+      if (at.colSpan > 1) at.colSpan -= 1; else at.remove();
+    });
+    pickCell(null);
+  } else if (kind === 'rowDel'){
+    const tr = td.parentElement;
+    if (tbl.rows.length <= 1){ toast('마지막 행은 지울 수 없습니다'); return; }
+    // 이 행을 지나가는 합친 칸은 한 줄 줄임
+    [...new Set(G.grid[r])].forEach(x => { const p = G.pos.get(x); if (p.r < r && p.r + x.rowSpan - 1 >= r) x.rowSpan -= 1; });
+    // 이 행에서 시작해 아래로 이어지는 칸은 다음 행으로 내림
+    [...tr.cells].forEach(x => { if (x.rowSpan > 1){ const nx = G.rows[r + 1]; x.rowSpan -= 1; const after = [...nx.cells].find(y => G.pos.get(y).c > G.pos.get(x).c); after ? nx.insertBefore(x, after) : nx.append(x); } });
+    tr.remove(); pickCell(null);
+  }
+  setDirty(true); updTblTools();
+}
+
+/* ---------- 복사·인쇄 ---------- */
+function pageText(){
+  // 본문만(첫 문장~붙임·끝.) — 수신·제목은 그룹웨어 서식에 있으므로 빼고 복사
+  const lines = [];
+  const pg = $('page');
+  for (const el of pg.querySelector('.bd').children){
+    const lv = +el.dataset.lv || 0;
+    if (el.tagName === 'TABLE'){
+      for (const tr of el.rows) lines.push('  '.repeat(lv) + [...tr.cells].map(c => c.innerText.replace(/\s*\n\s*/g, ' ').trim()).join('\t'));
+    } else {
+      const pad = el.classList.contains('att') && !/^붙임/.test(el.textContent) ? '      ' : '  '.repeat(lv);
+      lines.push(el.classList.contains('gap') ? '' : pad + el.textContent);
+    }
+  }
+  return lines.join('\n');
+}
+// 색을 #rrggbb로. 투명(rgba(…, 0))은 흰색 — 그룹웨어가 투명도를 무시하고 검정으로 칠하는 문제 방지
+function cssHex(c, fallback = '#ffffff'){
+  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(c || '');
+  if (!m) return fallback;
+  if (m[4] !== undefined && +m[4] === 0) return fallback;
+  return '#' + [1, 2, 3].map(i => (+m[i]).toString(16).padStart(2, '0')).join('');
+}
+function pageHtml(all = false){
+  // 본문 복사: 첫 문장~붙임·끝.만(기관명·수신·제목·결재란·주소는 그룹웨어 서식에 이미 있음)
+  // 문서 서식 전체 복사(all): 기관명·수신·제목·본문·발신명의·결재란·주소까지 화면 그대로
+  const ref = $('page').querySelector('.bd');
+  const src = all ? $('page') : ref, clone = src.cloneNode(true);
+  const srcEls = [src, ...src.querySelectorAll('*')], cl = [clone, ...clone.querySelectorAll('*')];
+  const pt = v => (parseFloat(v) * 0.75).toFixed(1) + 'pt';
+  srcEls.forEach((e, i) => {
+    const cs = getComputedStyle(e), c = cl[i];
+    c.removeAttribute('class'); c.removeAttribute('contenteditable'); c.removeAttribute('data-lv');
+    const st = [`font-family:${cs.fontFamily}`, `font-size:${pt(cs.fontSize)}`, `font-weight:${cs.fontWeight}`, `color:#000000`];
+    if (/^(P|DIV|TABLE)$/.test(e.tagName)) st.push(`margin:${pt(cs.marginTop)} 0 ${pt(cs.marginBottom)} ${pt(cs.marginLeft)}`, `padding-left:${pt(cs.paddingLeft)}`, `text-indent:${pt(cs.textIndent)}`, `text-align:${cs.textAlign}`, `line-height:${cs.lineHeight === 'normal' ? '160%' : (parseFloat(cs.lineHeight) / parseFloat(cs.fontSize) * 100).toFixed(0) + '%'}`);
+    if (e.tagName === 'P') st.push('white-space:pre-wrap');
+    if (/^(TD|TH)$/.test(e.tagName)) st.push('border:1px solid #000000', 'padding:2pt 5pt', `text-align:${cs.textAlign}`, `vertical-align:middle`, `background-color:${cssHex(cs.backgroundColor)}`);
+    if (e.tagName === 'TABLE') st.push('border-collapse:collapse', `background-color:#ffffff`);
+    // 전체 복사: 머리·결재란의 가로줄, '수신·제목' 이름표 폭
+    if (all && /^(P|DIV)$/.test(e.tagName)){
+      if (parseFloat(cs.borderTopWidth)) st.push(`border-top:${cs.borderTopWidth} solid #000000`, `padding-top:${pt(cs.paddingTop)}`);
+      if (parseFloat(cs.borderBottomWidth)) st.push(`border-bottom:${cs.borderBottomWidth} solid #000000`, `padding-bottom:${pt(cs.paddingBottom)}`);
+    }
+    if (all && e.tagName === 'SPAN' && cs.display === 'inline-block') st.push('display:inline-block', `min-width:${pt(cs.width)}`);
+    c.setAttribute('style', st.join(';'));
+    if (/^(TD|TH)$/.test(e.tagName)) c.setAttribute('bgcolor', cssHex(cs.backgroundColor));   // 스타일을 무시하는 편집기 대비
+  });
+  // 표가 좁게 찌그러지지 않도록 편집 화면의 표 너비·칸 너비를 %로 넘김
+  const srcT = [...src.querySelectorAll('table')], clT = [...clone.querySelectorAll('table')], bw = src.clientWidth || 1;
+  srcT.forEach((t, k) => {
+    const ct = clT[k], tw = t.getBoundingClientRect().width || 1;
+    const pct = Math.min(100, Math.round(tw / (ref.getBoundingClientRect().width || bw) * 1000) / 10);
+    ct.setAttribute('width', pct + '%');
+    ct.setAttribute('style', (ct.getAttribute('style') || '') + `;width:${pct}%;table-layout:fixed`);
+    ct.setAttribute('border', '1'); ct.setAttribute('cellspacing', '0'); ct.setAttribute('cellpadding', '3');
+    // 칸 너비: 합친 칸이 없는(칸 수가 가장 많은) 행 기준
+    const G = tableGrid(t), base = [...t.rows].find(r => [...r.cells].every(c => c.colSpan === 1) && r.cells.length === G.cols);
+    if (base){
+      const ws = [...base.cells].map(c => Math.round(c.getBoundingClientRect().width / tw * 1000) / 10);
+      const cg = document.createElement('colgroup');
+      ws.forEach(w => { const col = document.createElement('col'); col.setAttribute('width', w + '%'); col.setAttribute('style', `width:${w}%`); cg.append(col); });
+      ct.prepend(cg);
+      const cbase = ct.rows[[...t.rows].indexOf(base)];
+      [...cbase.cells].forEach((c, i) => { c.setAttribute('width', ws[i] + '%'); c.setAttribute('style', c.getAttribute('style') + `;width:${ws[i]}%`); });
+    }
+  });
+  if (all){
+    clone.removeAttribute('style');
+    if ($('page').classList.contains('no-ap')) [...clone.children].slice(-1)[0]?.remove();
+  }
+  // 붙여넣을 때 공백이 줄지 않도록 연속 공백을 &nbsp;로, 빈 줄(p.gap)은 그대로
+  clone.querySelectorAll('p').forEach(p => p.innerHTML = p.innerHTML.replace(/ {2,}/g, s => '&nbsp;'.repeat(s.length)));
+  return `<html><head><meta charset="utf-8"></head><body>${clone.innerHTML}</body></html>`;
+}
+async function copyRich(all = false){
+  const html = pageHtml(all), text = all ? $('page').innerText : pageText();
+  try {
+    await navigator.clipboard.write([new ClipboardItem({'text/html': new Blob([html], {type:'text/html'}), 'text/plain': new Blob([text], {type:'text/plain'})})]);
+    toast(all ? '문서 전체를 서식째 복사했습니다. 한글·워드에 붙여넣으세요' : '본문을 복사했습니다. 그룹웨어 기안 본문 칸에 붙여넣으세요');
+  } catch {
+    const box = document.createElement('div'); box.innerHTML = html; box.style.cssText = 'position:fixed;left:-9999px'; document.body.append(box);
+    const r = document.createRange(); r.selectNodeContents(box); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    document.execCommand('copy'); box.remove(); toast(all ? '문서 전체를 복사했습니다' : '본문을 복사했습니다');
+  }
+}
+async function copyText(){
+  const t = pageText();
+  try { await navigator.clipboard.writeText(t); }
+  catch { const ta = document.createElement('textarea'); ta.value = t; document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  toast('본문 텍스트를 복사했습니다');
+}
+
+/* ---------- 글꼴·크기 설정 ---------- */
+const PREF_KEY = 'gian-writer-prefs';
+function sizeOpts(sel, from, to, val){ sel.innerHTML = ''; for (let i = from; i <= to; i++) sel.add(new Option(i + 'pt', i)); sel.value = val; }
+function applyPrefs(){
+  const r = document.documentElement.style;
+  r.setProperty('--ff', $('font').value); r.setProperty('--fs', $('fs').value + 'pt');
+  r.setProperty('--fs-title', $('fsTitle').value + 'pt'); r.setProperty('--fs-org', $('fsOrg').value + 'pt'); r.setProperty('--lh', $('lh').value);
+  $('page').classList.toggle('no-ap', !$('showAp').checked);
+  try { localStorage.setItem(PREF_KEY, JSON.stringify({font:$('font').value, fs:$('fs').value, fsTitle:$('fsTitle').value, fsOrg:$('fsOrg').value, lh:$('lh').value, ap:$('showAp').checked})); } catch {}
+}
+function fitPage(){
+  const w = $('stage').clientWidth - 34, z = Math.min(1, w / 794);
+  $('page').style.zoom = z > 0.3 ? z : 0.3;
+}
+
+/* ---------- 예시 ---------- */
+const SAMPLE = `2026년 11월 23일(월) 오후 2시부터 5시까지 서울캠퍼스 교수학습개발원 세미나실에서 2026학년도 2학기 학생교육혁신단 활동 성과공유회를 개최하려고 합니다. 학생교육혁신단 단원과 지도교수 등 30명을 대상으로 하며, 한 학기 동안의 우수 활동 사례를 공유하고 다음 학기 운영 방향을 논의하기 위해서입니다.
+- 1부: 학기 활동 결과 보고
+- 2부: 우수팀 사례 발표 및 시상
+- 3부: 다음 학기 운영 방향 토의
+14:00~14:10 인사말 / 교육혁신원장
+14:10~15:00 학기 활동 결과 보고
+15:00~16:00 우수팀 사례 발표 및 시상
+16:00~17:00 다음 학기 운영 방향 토의
+예산항목: [혁신]학생교육혁신단 운영
+예산은 다과 10,000원×30명, 현수막 제작 150,000원, 우수팀 시상금 200,000원×3팀입니다.
+주관: 교육혁신원
+붙임: 운영 계획(안), 참석 대상 명단`;
+
+const SAMPLE2 = `관련: 교육팀-123(2026. 8. 13.) "하반기 채용 대비 자기소개서 특강 시행"
+재학생의 취업 역량 강화를 위해 2026년 9월 8일(화) 오후 2시부터 4시까지 서울캠퍼스 ○○관 국제회의실에서 하반기 채용 대비 자기소개서 특강을 실시했습니다. 재학생 35명을 대상으로 운영했습니다.
+주요 내용
+- 하반기 취업시장 동향 및 기업별 합격 사례 분석
+- 문항별 자기소개서 작성 전략
+만족도 조사 결과 4.78점(5점 만점, 응답 23명)
+성과 및 향후 개선 사항
+- 응답자 전원이 '만족' 이상으로 응답함
+- 면접·인적성 등 후속 프로그램 수요를 확인하여 연계 운영 검토
+예산항목: [혁신]취업특강 관련경비
+예산은 강사료 350,000원입니다.
+붙임: 관련 근거, 참여자 명단, 만족도 조사 결과, 지출결의서 사본`;
+
+const SAMPLE3 = `2026학년도 2학기 비교과 프로그램 성과 분석을 위해 학사지원팀에 비교과 프로그램 참여 학생 현황 자료 제출을 요청하려고 합니다. 성과지표 산출에 학과별 참여 현황이 필요하기 때문입니다.
+요청 사항
+- 2026학년도 2학기 비교과 프로그램별 참여 인원(학과·학년별, 개인 식별 정보 제외)
+- 프로그램별 이수(수료) 인원
+2026년 11월 20일까지 회신해 주시기 바랍니다.
+회신 방법: 전자결재 회신
+붙임: 자료 제출 양식`;
+
+const SAMPLE4 = `서울캠퍼스 ○○관 엘리베이터 교체 공사를 아래와 같이 시행하여 이용 불편이 예상되므로 안내하려고 합니다. 2026년 11월 16일부터 11월 20일까지 ○○관 1~5층 엘리베이터 운행을 중지합니다. 대상은 ○○관 이용 구성원입니다.
+세부 내용
+- 노후 엘리베이터 전면 교체
+- 공사 기간 중 계단 이용
+협조 사항
+- 공사 구간 출입 자제
+- 소속 구성원에게 안내 전파
+문의: 시설관리팀(내선 0000)
+붙임: 공사 안내문`;
+
+const SAMPLE5 = `○○초등학교에 어학 멘토링 오리엔테이션 특강 강사 파견을 요청하려고 합니다. 대학생 멘토의 초등학생 지도 역량 강화를 위해서입니다.
+2026년 12월 3일(목) 오전 10시 30분부터 12시까지 서울캠퍼스 ○○관 국제회의실에서 진행합니다. 대상은 어학 멘토링 서포터즈 25명입니다.
+주요 내용
+- 초등학생 지도 경험 및 수업 사례 공유
+- 학습 동기 유발 및 수업 운영 노하우
+10:30~10:35 개회 / 사회자
+10:35~11:05 특강 / ○○초등학교 교사
+11:05~12:00 사례 공유 및 질의응답
+예산은 특강료 200,000원입니다.
+붙임: 오리엔테이션 운영 계획`;
+
+const SAMPLE6 = `창의·융합형 교과목 운영을 지원하기 위해 2026년도 2학기 혁신교과목 지원사업을 시행하려고 합니다. 지원 대상은 2026학년도 2학기 개설 강좌입니다. 신청 기간은 2026년 9월 15일부터 10월 2일까지이고 이메일로 신청을 받습니다.
+지원 내용
+- 강좌별 40만원+(수강생 수×1만원), 최대 100만원
+- 실험실습비 및 교과목 운영비 지원
+추진 일정
+- 신청 접수: ~2026. 10. 2.(금)
+- 심사 및 선정: 2026. 10. 중
+- 결과보고 및 정산: ~2027. 1. 15.(금)
+심사 기준
+- 사업 목적과의 정합성: 35점
+- 집행 계획의 적절성: 35점
+- 기대성과의 우수성: 30점
+예산항목: [혁신]혁신교과목 지원
+예산은 혁신교과목 지원금 15,000,000원입니다.
+붙임: 신청서 양식, 사업 안내문`;
+
+const SAMPLE7 = `우리 대학 AI 교육성과 측정을 위하여 AI 리터러시 진단도구 개발 연구를 추진하려고 합니다. 연구기간은 2026년 12월 1일부터 2027년 2월 26일까지입니다.
+연구 내용
+- AI 리터러시 관련 문헌 검토
+- 진단도구(안) 문항 전문가 검토
+- 예비조사 및 타당화
+연구책임자: ○○○ 교수(○○학부)
+공동연구원: ○○○ 연구교수, ○○○ 연구원
+연구보조원: ○○○ 연구원
+예산항목: [혁신]교육혁신원 정책연구
+예산은 연구비 3,000,000원입니다.
+붙임: 연구비 지원신청서(연구계획서, 연구비 실행예산서 포함)`;
+
+/* ---------- 연결 ---------- */
+function init(){
+  sizeOpts($('fs'), 9, 20, 12); sizeOpts($('fsTitle'), 10, 24, 13); sizeOpts($('fsOrg'), 12, 30, 18); sizeOpts($('selSize'), 8, 30, 12);
+  try { const p = JSON.parse(localStorage.getItem(PREF_KEY) || 'null');
+    if (p){ if ([...$('font').options].some(o => o.value === p.font)) $('font').value = p.font; $('fs').value = p.fs; $('fsTitle').value = p.fsTitle; $('fsOrg').value = p.fsOrg; $('lh').value = p.lh; $('showAp').checked = p.ap !== false; } } catch {}
+  applyPrefs();
+  addRow(); addAtt(); addAcct();
+  applyType(true);
+
+  const left = document.querySelector('.left');
+  left.addEventListener('input', e => { const tr = e.target.closest('#budT tr'); if (tr) syncRow(tr); refresh(); });
+  left.addEventListener('change', refresh);
+  left.addEventListener('click', e => { if (e.target.classList.contains('x')){ e.target.closest('tr').remove(); refresh(); } });
+  $('type').addEventListener('change', () => { applyType(true); applyType(false); refresh(); });
+  $('addAcct').onclick = () => { addAcct().querySelector('input').focus(); refresh(); };
+  $('addRel').onclick = () => { addRel(); refresh(); };
+  $('addRow').onclick = () => { addRow().querySelector('input').focus(); refresh(); };
+  $('addAtt').onclick = () => { addAtt().querySelector('input').focus(); refresh(); };
+  $('sampleSel').addEventListener('change', e => {
+    const k = e.target.value; if (!k) return;
+    const SAMPLES = {SAMPLE, SAMPLE2, SAMPLE3, SAMPLE4, SAMPLE5, SAMPLE6, SAMPLE7};
+    $('desc').value = SAMPLES[k]; e.target.value = ''; piiCheck();
+    toast("예시를 넣었습니다. '서술에서 항목 채우기'를 눌러 보세요");
+  });
+  $('chkBadge').addEventListener('click', () => {
+    const c = $('chkCard'); c.scrollIntoView({behavior:'smooth', block:'center'});
+    c.classList.add('flash'); setTimeout(() => c.classList.remove('flash'), 1200);
+  });
+  $('attQuick').addEventListener('click', e => {
+    if (e.target.tagName !== 'BUTTON') return;
+    const n = e.target.textContent.trim();
+    if (rowsOf('attT').some(r => r.name === n)) { toast(`'${n}'은(는) 이미 있습니다`); return; }
+    const empty = [...$('attT').tBodies[0].rows].find(tr => !tr.querySelector('[data-k="name"]').value.trim());
+    if (empty) empty.querySelector('[data-k="name"]').value = n; else addAtt({name:n});
+    refresh();
+  });
+  $('btnParse').onclick = () => {
+    const t = $('desc').value.trim(); if (!t){ toast('먼저 업무 내용을 서술해 주세요'); return; }
+    const {r, filled} = parseDesc(t); applyParsed(r); setDirty(false); refresh();
+    toast(filled ? `${filled}개 항목을 채웠습니다. 고칠 곳은 ②~⑤를 눌러 펼치세요` : '찾은 항목이 없습니다. 아래 칸에 직접 적어 주세요');
+  };
+
+  // 보고자료 파일(hwpx·pdf·txt) 끌어 놓기 → 서술 칸에 넣고 항목 채우기 (외부 전송 없음)
+  const card1 = $('card1'), drop = $('drop'), fileIn = $('fileIn');
+  ['dragover','drop'].forEach(ev => window.addEventListener(ev, e => e.preventDefault()));   // 페이지 밖으로 파일이 열리지 않게
+  card1.addEventListener('dragover', e => { e.preventDefault(); card1.classList.add('dragon'); });
+  card1.addEventListener('dragleave', e => { if (!card1.contains(e.relatedTarget)) card1.classList.remove('dragon'); });
+  card1.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation(); card1.classList.remove('dragon');
+    const f = e.dataTransfer.files[0]; if (f) readReport(f);
+  });
+  drop.onclick = () => fileIn.click();
+  fileIn.onchange = () => { if (fileIn.files[0]) readReport(fileIn.files[0]); fileIn.value = ''; };
+
+  async function readReport(f){
+    const ext = (f.name.match(/\.([^.]+)$/) || [,''])[1].toLowerCase();
+    if (ext === 'hwp'){ toast('.hwp(옛 한글 형식)는 읽을 수 없습니다. 한글에서 [다른 이름으로 저장] → hwpx 또는 PDF로 저장해 넣어 주세요'); return; }
+    if (!['hwpx','pdf','txt'].includes(ext)){ toast('hwpx·pdf·txt 파일만 읽을 수 있습니다'); return; }
+    drop.classList.add('busy'); const old = drop.innerHTML; drop.textContent = '파일을 읽는 중…';
+    try {
+      const buf = await f.arrayBuffer();
+      let t = ext === 'hwpx' ? await hwpxToText(buf) : ext === 'pdf' ? await pdfToText(buf) : new TextDecoder('utf-8').decode(buf);
+      t = cleanReportText(t);
+      if (!t){ toast(ext === 'pdf' ? '글자를 찾지 못했습니다. 스캔(그림) PDF는 읽을 수 없습니다' : '파일에서 글자를 찾지 못했습니다'); return; }
+      // 1. 가. 1) 구조가 있는 보고자료는 기안문에 필요한 부분만 골라 짧게 요약
+      const sum = reportToDesc(t, f.name);
+      const body = sum ? sum.desc : t;
+      const cur = $('desc').value.trim();
+      if (cur && !confirm('서술 칸에 이미 내용이 있습니다.\n[확인] 파일 내용으로 바꾸기 · [취소] 뒤에 이어 붙이기')) $('desc').value = cur + '\n\n' + body;
+      else $('desc').value = body;
+      const {r, filled} = parseDesc($('desc').value.trim());
+      if (sum){
+        const s = sum.set;
+        if (s.type && /^(report|coop|notice|external)$/.test(r.type)) { delete s.type; delete s.verb; }
+        Object.keys(s).forEach(k => { if (s[k] !== '' && s[k] != null) r[k] = s[k]; });
+        if ('t2' in s) r.t2 = s.t2;       // 시각을 하나로 정한 경우 끝 시각 비움
+      }
+      applyParsed(r); setDirty(false); refresh();
+      toast(sum
+        ? `보고자료를 요약해 ${filled}개 항목을 채웠습니다.` + (sum.skipped.length ? ` 요약에서 뺀 단락: ${sum.skipped.join(', ')} — 필요하면 ③에 직접 넣어 주세요` : ' 서술 칸과 ②~⑤를 확인해 주세요')
+        : `파일에서 ${t.split('\n').length}줄을 읽어 ${filled}개 항목을 채웠습니다. 서술 칸과 ②~⑤를 확인해 주세요`);
+    } catch (err) {
+      console.error(err); toast('파일을 읽지 못했습니다: ' + (err.message || err));
+    } finally { drop.classList.remove('busy'); drop.innerHTML = old; }
+  }
+  $('btnClear').onclick = () => { if (confirm('입력한 내용을 모두 지울까요?')) location.reload(); };
+  $('home').onclick = () => { if (confirm('처음 화면으로 돌아갈까요? 입력한 내용은 지워집니다.')) location.reload(); };
+
+  // 도구 막대
+  $('style').addEventListener('change', () => delete $('style').dataset.auto);
+  // 수신에 구청장·학교장·시장 등 외부 기관장이 들어가면 외부 기관 시행문으로 켬
+  $('recv').addEventListener('change', () => {
+    if (/(구청장|시장|군수|도지사|교육감|학교장|초등학교|중학교|고등학교|공단|재단|협의회장|센터장\(.*기관)/.test($('recv').value) && !$('ext').checked){
+      $('ext').checked = true; if ($('prefix').value === '[대학혁신지원사업]') $('prefix').value = '[한국외국어대학교]';
+      applyType(false); refresh(); toast('외부 기관 시행문으로 바꿨습니다(인사말·발신명의)');
+    }
+  });
+  $('ext').addEventListener('change', () => applyType(false));
+  $('recv').addEventListener('input', () => { $('greetTxt').textContent = greetText($('ext').checked, $('recv').value); });
+  ['font', 'fs', 'fsTitle', 'fsOrg', 'lh', 'showAp'].forEach(id => $(id).addEventListener('change', applyPrefs));
+  document.querySelectorAll('[data-step]').forEach(b => b.onclick = () => {
+    const [id, d] = b.dataset.step.split(':'), s = $(id), v = Math.min(+s.options[s.options.length - 1].value, Math.max(+s.options[0].value, +s.value + +d));
+    s.value = v; applyPrefs();
+  });
+  document.querySelectorAll('.keep').forEach(b => b.addEventListener('mousedown', e => { if (b.tagName === 'BUTTON') e.preventDefault(); }));
+  $('selUp').onclick = () => sizeSel(Math.min(30, selPt() + 1));
+  $('selDown').onclick = () => sizeSel(Math.max(8, selPt() - 1));
+  $('selSize').onchange = () => sizeSel(+$('selSize').value);
+  $('selBold').onclick = () => { if (!restoreSel()){ toast('미리보기에서 글자를 먼저 선택하세요'); return; } document.execCommand('bold'); setDirty(true); };
+  $('page').addEventListener('input', () => setDirty(true));
+  $('rebuild').onclick = () => { if (confirm('직접 고친 내용(글자 크기 포함)이 사라집니다. 입력값으로 다시 만들까요?')){ dirty = false; render(); } };
+  // ②~⑤ 접기/펼치기(처음에는 접힘 — 보통 ①에 적고 '항목 채우기'만 누르므로)
+  document.querySelectorAll('section.card.fold > h2').forEach(h => h.addEventListener('click', () => {
+    const sec = h.parentElement, on = sec.classList.toggle('open');
+    h.querySelector('.farrow').textContent = on ? '접기 ▴' : '펼치기 ▾';
+  }));
+  // 표 편집: 미리보기 표의 칸을 누르면 선택
+  $('page').addEventListener('click', e => { const td = e.target.closest('td, th'); pickCell(td && td.closest('.bd') ? td : null); });
+  document.querySelectorAll('#tblTools [data-tb]').forEach(b => b.addEventListener('click', () => tblEdit(b.dataset.tb)));
+  updTblTools();
+  $('cpRich').onclick = () => { pickCell(null); copyRich(false); };
+  $('cpAll').onclick = () => { pickCell(null); copyRich(true); };
+  $('print').onclick = () => { pickCell(null); window.print(); };
+  window.addEventListener('resize', fitPage);
+  refresh(); fitPage();
+}
+init();
+</script>
+</body>
+</html>
